@@ -1,0 +1,1935 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OAauth — Auth infrastructure for developers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400;500&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #141210;
+      --ink2: #2a2620;
+      --ink3: #48433c;
+      --paper: #faf8f5;
+      --paper2: #f2ede6;
+      --paper3: #e8e0d5;
+      --line: rgba(20,18,16,0.10);
+      --line2: rgba(20,18,16,0.06);
+      --amber: #c8831a;
+      --amber-light: #f5c26b;
+      --amber-pale: rgba(200, 131, 26, 0.08);
+      --amber-pale2: rgba(200, 131, 26, 0.04);
+      --green: #2d6a4f;
+      --green-bg: rgba(45,106,79,0.07);
+      --red: #9b2c2c;
+      --red-bg: rgba(155,44,44,0.07);
+      --blue: #2c4a9b;
+      --display: 'Instrument Serif', Georgia, serif;
+      --mono: 'Geist Mono', 'Fira Code', monospace;
+      --sans: 'Geist', 'DM Sans', sans-serif;
+      --r: 6px;
+      --r-lg: 12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--paper3); border-radius: 10px; }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 56px;
+      background: rgba(250,248,245,0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--display); font-size: 18px; font-weight: 400;
+      color: var(--ink); text-decoration: none; letter-spacing: -0.01em;
+    }
+    .logo-mark {
+      width: 26px; height: 26px; border-radius: 6px;
+      background: var(--ink); display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg { color: var(--paper); }
+    .nav-center {
+      display: flex; align-items: center; gap: 2px;
+      position: absolute; left: 50%; transform: translateX(-50%);
+    }
+    .nav-link {
+      padding: 5px 13px; border-radius: 5px; font-size: 13px; font-weight: 400;
+      color: var(--ink3); text-decoration: none; transition: 0.15s; cursor: pointer;
+      border: none; background: none; font-family: var(--sans);
+    }
+    .nav-link:hover { color: var(--ink); background: var(--paper2); }
+    .nav-link.active { color: var(--ink); background: var(--paper3); }
+    .nav-right { display: flex; align-items: center; gap: 8px; }
+
+    /* ─── BUTTONS ─── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px; border-radius: var(--r); font-size: 13px; font-weight: 500;
+      font-family: var(--sans); cursor: pointer; transition: all 0.15s;
+      text-decoration: none; border: none; outline: none; letter-spacing: -0.01em;
+    }
+    .btn-outline {
+      background: transparent; color: var(--ink);
+      border: 1px solid var(--line2); box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .btn-outline:hover { border-color: var(--line); background: var(--paper2); }
+    .btn-solid {
+      background: var(--ink); color: var(--paper);
+      border: 1px solid var(--ink);
+    }
+    .btn-solid:hover { background: var(--ink2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(20,18,16,0.15); }
+    .btn-amber {
+      background: var(--amber); color: white;
+      border: 1px solid transparent;
+    }
+    .btn-amber:hover { background: #b5741a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(200,131,26,0.25); }
+    .btn-ghost {
+      background: transparent; color: var(--ink3); border: 1px solid var(--line);
+    }
+    .btn-ghost:hover { color: var(--ink); background: var(--paper2); }
+    .btn-danger-soft {
+      background: var(--red-bg); color: var(--red); border: 1px solid rgba(155,44,44,0.15);
+    }
+    .btn-danger-soft:hover { background: rgba(155,44,44,0.12); }
+    .btn-sm { padding: 5px 13px; font-size: 12px; }
+    .btn-lg { padding: 11px 26px; font-size: 14px; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+    /* ─── PAGES ─── */
+    .page { display: none; min-height: 100vh; padding-top: 56px; }
+    .page.active { display: block; }
+
+    /* ─── AUTH ─── */
+    .auth-shell {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 80px 20px 40px; position: relative;
+    }
+    .auth-shell::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 600px 400px at 50% 0%, rgba(200,131,26,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .auth-card {
+      width: 100%; max-width: 380px; background: white;
+      border: 1px solid var(--line); border-radius: var(--r-lg);
+      padding: 36px; position: relative; z-index: 1;
+      box-shadow: 0 4px 32px rgba(20,18,16,0.06), 0 1px 4px rgba(20,18,16,0.04);
+    }
+    .auth-brand {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 32px;
+      font-family: var(--display); font-size: 15px; color: var(--ink);
+    }
+    .auth-title { font-family: var(--display); font-size: 26px; font-weight: 400; margin-bottom: 6px; letter-spacing: -0.02em; color: var(--ink); }
+    .auth-sub { font-size: 13px; color: var(--ink3); margin-bottom: 28px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 11px; color: var(--ink3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--mono); }
+    .form-input {
+      width: 100%; padding: 10px 13px; background: var(--paper);
+      border: 1px solid var(--line); border-radius: var(--r);
+      color: var(--ink); font-size: 14px; font-family: var(--sans); outline: none; transition: 0.15s;
+    }
+    .form-input:focus { border-color: var(--amber); background: white; box-shadow: 0 0 0 3px rgba(200,131,26,0.08); }
+    .form-input::placeholder { color: var(--ink3); opacity: 0.6; }
+    .auth-submit {
+      width: 100%; padding: 11px; border-radius: var(--r); border: none; cursor: pointer;
+      background: var(--ink); color: var(--paper); font-size: 14px; font-weight: 500;
+      font-family: var(--sans); transition: 0.15s; letter-spacing: -0.01em;
+    }
+    .auth-submit:hover:not(:disabled) { background: var(--ink2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(20,18,16,0.15); }
+    .auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .auth-switch { text-align: center; font-size: 13px; color: var(--ink3); margin-top: 20px; }
+    .auth-switch a { color: var(--amber); text-decoration: none; cursor: pointer; font-weight: 500; }
+    .form-error {
+      padding: 9px 12px; background: var(--red-bg); border: 1px solid rgba(155,44,44,0.15);
+      border-radius: var(--r); font-size: 12px; color: var(--red); margin-bottom: 14px;
+      display: none; font-family: var(--mono);
+    }
+    .form-error.show { display: block; }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      text-align: center; position: relative; overflow: hidden; padding: 80px 24px 40px;
+    }
+    .hero-inner { position: relative; z-index: 2; max-width: 800px; }
+    .hero-bg {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 800px 500px at 50% 10%, rgba(200,131,26,0.06) 0%, transparent 65%),
+        linear-gradient(180deg, var(--paper) 0%, var(--paper2) 100%);
+    }
+    .hero-grid {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image: linear-gradient(var(--line2) 1px, transparent 1px), linear-gradient(90deg, var(--line2) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 700px 400px at 50% 30%, black 0%, transparent 70%);
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px; padding: 4px 14px;
+      border-radius: 20px; background: var(--paper3); border: 1px solid var(--line);
+      font-size: 11px; font-family: var(--mono); color: var(--ink3); margin-bottom: 28px;
+      animation: fadeUp 0.6s ease both;
+    }
+    .eyebrow-dot { width: 5px; height: 5px; background: var(--amber); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    h1.hero-title {
+      font-family: var(--display); font-size: clamp(48px, 7vw, 82px); font-weight: 400;
+      line-height: 1.0; margin-bottom: 22px; color: var(--ink); letter-spacing: -0.03em;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+    h1.hero-title em { font-style: italic; color: var(--amber); }
+    .hero-sub {
+      font-size: 17px; color: var(--ink3); max-width: 520px; margin: 0 auto 40px;
+      line-height: 1.8; font-weight: 300; animation: fadeUp 0.6s 0.2s ease both;
+    }
+    .hero-actions {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+    .hero-stats {
+      display: flex; align-items: center; justify-content: center; gap: 36px;
+      margin-top: 64px; padding-top: 36px; border-top: 1px solid var(--line);
+      animation: fadeUp 0.6s 0.4s ease both;
+    }
+    .hero-stat-val { font-family: var(--display); font-size: 28px; color: var(--ink); letter-spacing: -0.02em; }
+    .hero-stat-label { font-size: 12px; color: var(--ink3); margin-top: 2px; font-family: var(--mono); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── QUICKSTART ─── */
+    .qs-wrap { max-width: 860px; margin: 0 auto; padding: 80px 28px 120px; }
+    .section-label {
+      font-family: var(--mono); font-size: 10px; color: var(--ink3); text-transform: uppercase;
+      letter-spacing: 0.12em; margin-bottom: 48px; display: flex; align-items: center; gap: 14px;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+    .step-list { display: flex; flex-direction: column; gap: 0; }
+    .step {
+      display: grid; grid-template-columns: 48px 1fr;
+      gap: 0 28px; padding-bottom: 52px; position: relative;
+    }
+    .step::before {
+      content: ''; position: absolute; left: 22px; top: 40px; bottom: 0;
+      width: 1px; background: var(--line);
+    }
+    .step:last-child::before { display: none; }
+    .step-left { display: flex; flex-direction: column; align-items: center; }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%; background: white;
+      border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono); font-size: 11px; color: var(--ink3); flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .step.done .step-num { background: var(--amber-pale); border-color: rgba(200,131,26,0.3); color: var(--amber); }
+    .step-body { padding-top: 10px; }
+    .step-title { font-family: var(--display); font-size: 20px; font-weight: 400; color: var(--ink); letter-spacing: -0.02em; margin-bottom: 6px; }
+    .step-tag {
+      display: inline-block; font-family: var(--mono); font-size: 9px; color: var(--ink3);
+      padding: 2px 7px; background: var(--paper2); border-radius: 3px; border: 1px solid var(--line);
+      margin-left: 8px; vertical-align: middle;
+    }
+    .step-desc { font-size: 14px; color: var(--ink3); margin-bottom: 18px; line-height: 1.7; }
+
+    /* ─── CODE BLOCKS ─── */
+    .code-wrap { background: var(--ink); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 14px; }
+    .code-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .code-lang-tag { font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.06em; }
+    .code-copy-btn {
+      background: none; border: none; cursor: pointer; font-size: 11px; font-family: var(--mono);
+      color: rgba(255,255,255,0.3); display: flex; align-items: center; gap: 4px;
+      padding: 2px 7px; border-radius: 3px; transition: 0.15s;
+    }
+    .code-copy-btn:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.06); }
+    .code-copy-btn.copied { color: #6ee7b7; }
+    pre {
+      padding: 18px 16px; overflow-x: auto; font-family: var(--mono);
+      font-size: 12.5px; line-height: 1.75; color: rgba(255,255,255,0.85);
+    }
+    .tk { color: #c8831a; } /* keyword amber */
+    .ts { color: #8ab4f8; } /* string blue */
+    .tc { color: rgba(255,255,255,0.25); font-style: italic; } /* comment */
+    .tf { color: #a8d5a2; } /* function green */
+    .tn { color: #f5c26b; } /* number/name */
+    .tp { color: rgba(255,255,255,0.5); } /* punct */
+    code.inline {
+      font-family: var(--mono); font-size: 12px; color: var(--amber);
+      background: var(--amber-pale); padding: 1px 6px; border-radius: 3px;
+      border: 1px solid rgba(200,131,26,0.12);
+    }
+
+    /* ─── TABS ─── */
+    .tab-bar {
+      display: flex; gap: 1px; background: var(--paper2);
+      border: 1px solid var(--line); border-radius: var(--r); padding: 3px; margin-bottom: 12px; width: fit-content;
+    }
+    .tab-btn {
+      padding: 5px 14px; border-radius: 4px; border: none; background: none;
+      font-size: 12px; font-family: var(--mono); color: var(--ink3); cursor: pointer; transition: 0.12s;
+    }
+    .tab-btn:hover { color: var(--ink); }
+    .tab-btn.active { background: white; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Snippet card */
+    .snippet-card { background: var(--ink); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 16px; }
+    .snippet-tabs {
+      display: flex; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); overflow-x: auto;
+    }
+    .snippet-tab {
+      padding: 9px 16px; font-size: 11px; font-family: var(--mono); color: rgba(255,255,255,0.35);
+      cursor: pointer; transition: 0.12s; border: none; background: none;
+      border-bottom: 2px solid transparent; white-space: nowrap; letter-spacing: 0.02em;
+    }
+    .snippet-tab:hover { color: rgba(255,255,255,0.6); }
+    .snippet-tab.active { color: var(--amber-light); border-bottom-color: var(--amber); }
+
+    /* notice boxes */
+    .info-box, .warn-box {
+      display: flex; gap: 10px; padding: 11px 14px; border-radius: var(--r);
+      font-size: 13px; color: var(--ink3); margin-bottom: 12px;
+    }
+    .info-box { background: var(--amber-pale2); border: 1px solid rgba(200,131,26,0.12); }
+    .warn-box { background: var(--red-bg); border: 1px solid rgba(155,44,44,0.15); color: var(--red); }
+    .info-box svg { flex-shrink: 0; margin-top: 2px; color: var(--amber); }
+    .warn-box svg { flex-shrink: 0; margin-top: 2px; color: var(--red); }
+
+    /* ─── DASHBOARD ─── */
+    .dash-layout { display: flex; min-height: calc(100vh - 56px); }
+    .sidebar {
+      width: 220px; flex-shrink: 0; background: white; border-right: 1px solid var(--line);
+      padding: 20px 0; position: sticky; top: 56px; height: calc(100vh - 56px);
+      overflow-y: auto; display: flex; flex-direction: column;
+    }
+    .sidebar-section { padding: 0 12px; margin-bottom: 24px; }
+    .sidebar-label {
+      font-size: 9px; font-family: var(--mono); color: var(--ink3); padding: 0 8px;
+      margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.12em;
+    }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 9px; padding: 7px 10px;
+      border-radius: 5px; font-size: 13px; color: var(--ink3); cursor: pointer;
+      transition: 0.1s; border: none; background: none; width: 100%; text-align: left;
+      font-family: var(--sans);
+    }
+    .sidebar-link:hover { color: var(--ink); background: var(--paper); }
+    .sidebar-link.active { color: var(--ink); background: var(--paper2); }
+    .sidebar-link svg { opacity: 0.5; flex-shrink: 0; }
+    .sidebar-link.active svg { opacity: 1; }
+    .sidebar-badge {
+      margin-left: auto; font-size: 10px; font-family: var(--mono);
+      background: var(--amber-pale); color: var(--amber);
+      padding: 1px 6px; border-radius: 8px; border: 1px solid rgba(200,131,26,0.15);
+    }
+    .sidebar-user {
+      padding: 14px 20px; border-top: 1px solid var(--line); margin-top: auto;
+    }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; background: var(--ink);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-family: var(--mono); color: var(--paper); flex-shrink: 0;
+    }
+
+    .dash-main { flex: 1; padding: 36px 40px; overflow-y: auto; }
+    .dash-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; gap: 12px; }
+    .page-title { font-family: var(--display); font-size: 24px; font-weight: 400; color: var(--ink); letter-spacing: -0.02em; }
+    .page-sub { font-size: 12px; color: var(--ink3); margin-top: 3px; font-family: var(--mono); }
+
+    /* stat cards */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 32px; }
+    .stat-card { background: white; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+    .stat-val { font-size: 28px; font-weight: 400; font-family: var(--display); color: var(--ink); letter-spacing: -0.02em; }
+    .stat-label { font-size: 11px; color: var(--ink3); margin-top: 3px; font-family: var(--mono); }
+
+    /* app cards */
+    .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .app-card {
+      background: white; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 22px;
+      cursor: pointer; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .app-card:hover { border-color: var(--paper3); box-shadow: 0 4px 16px rgba(20,18,16,0.07); transform: translateY(-1px); }
+    .app-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+    .app-icon { width: 42px; height: 42px; border-radius: 10px; background: var(--paper2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+    .status-live { font-size: 10px; font-family: var(--mono); padding: 3px 8px; border-radius: 4px; background: var(--green-bg); color: var(--green); border: 1px solid rgba(45,106,79,0.15); }
+    .status-dev { font-size: 10px; font-family: var(--mono); padding: 3px 8px; border-radius: 4px; background: var(--amber-pale); color: var(--amber); border: 1px solid rgba(200,131,26,0.15); }
+    .app-name { font-size: 15px; font-weight: 500; color: var(--ink); margin-bottom: 3px; letter-spacing: -0.01em; }
+    .app-cid { font-family: var(--mono); font-size: 10px; color: var(--ink3); }
+    .app-meta { display: flex; gap: 16px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line2); }
+    .app-meta-item { font-size: 10px; color: var(--ink3); font-family: var(--mono); }
+    .app-meta-item span { display: block; font-size: 13px; color: var(--ink2); margin-top: 1px; font-family: var(--sans); }
+    .app-new-card {
+      border-style: dashed; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 10px; min-height: 158px; background: transparent;
+    }
+    .app-new-card:hover { border-color: var(--paper3) !important; background: var(--paper2) !important; }
+
+    /* table */
+    .table-wrap { background: white; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: var(--paper2); }
+    th { padding: 9px 16px; text-align: left; font-size: 10px; font-family: var(--mono); color: var(--ink3); font-weight: 400; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: 0.08em; }
+    td { padding: 12px 16px; font-size: 12px; color: var(--ink3); border-bottom: 1px solid var(--line2); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--paper2); }
+    .method-tag { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 3px; }
+    .method-post { background: var(--green-bg); color: var(--green); }
+    .method-get { background: rgba(44,74,155,0.07); color: var(--blue); }
+    .status-200 { color: var(--green); font-family: var(--mono); font-size: 11px; }
+    .status-401 { color: var(--red); font-family: var(--mono); font-size: 11px; }
+    .status-500 { color: #b45309; font-family: var(--mono); font-size: 11px; }
+
+    /* detail */
+    .detail-header { background: white; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+    .detail-icon { width: 48px; height: 48px; border-radius: 11px; background: var(--paper2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .detail-title { font-family: var(--display); font-size: 20px; font-weight: 400; letter-spacing: -0.02em; }
+    .detail-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 5px; }
+    .detail-meta span { font-size: 11px; color: var(--ink3); font-family: var(--mono); }
+    .detail-section { background: white; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 22px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+    .detail-section-title { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+
+    /* cred box */
+    .cred-box { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    .cred-row { display: flex; align-items: center; gap: 8px; }
+    .cred-label { font-family: var(--mono); font-size: 10px; color: var(--ink3); min-width: 100px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .cred-value { font-family: var(--mono); font-size: 12px; color: var(--ink); background: white; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--line); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cred-copy { background: none; border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font-size: 11px; font-family: var(--mono); color: var(--ink3); cursor: pointer; transition: 0.15s; }
+    .cred-copy:hover { color: var(--amber); border-color: rgba(200,131,26,0.3); }
+    .cred-copy.copied { color: var(--green); border-color: rgba(45,106,79,0.3); }
+
+    /* uri */
+    .uri-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+    .uri-tag { display: flex; align-items: center; justify-content: space-between; background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 7px 11px; font-family: var(--mono); font-size: 12px; color: var(--ink3); }
+    .uri-del { background: none; border: none; cursor: pointer; color: var(--ink3); font-size: 16px; line-height: 1; transition: 0.12s; padding: 0 2px; }
+    .uri-del:hover { color: var(--red); }
+    .uri-add { display: flex; gap: 8px; margin-top: 8px; }
+    .uri-add input { flex: 1; padding: 7px 11px; background: var(--paper); border: 1px solid var(--line); border-radius: 5px; color: var(--ink); font-family: var(--mono); font-size: 12px; outline: none; }
+    .uri-add input:focus { border-color: var(--amber); }
+
+    /* modal */
+    .modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(20,18,16,0.4); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: white; border: 1px solid var(--line); border-radius: var(--r-lg); width: 100%; max-width: 460px; padding: 30px; position: relative; box-shadow: 0 20px 60px rgba(20,18,16,0.15); }
+    .modal-close { position: absolute; top: 14px; right: 14px; background: none; border: none; color: var(--ink3); font-size: 18px; cursor: pointer; line-height: 1; transition: 0.15s; }
+    .modal-close:hover { color: var(--ink); }
+    .modal-title { font-family: var(--display); font-size: 20px; font-weight: 400; margin-bottom: 5px; letter-spacing: -0.02em; }
+    .modal-sub { font-size: 13px; color: var(--ink3); margin-bottom: 22px; }
+
+    /* toast */
+    .toast {
+      position: fixed; bottom: 22px; right: 22px; z-index: 300;
+      background: var(--ink); color: var(--paper);
+      border-radius: var(--r); padding: 11px 16px; font-size: 12px;
+      display: flex; align-items: center; gap: 8px;
+      transform: translateY(70px); opacity: 0;
+      transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none; max-width: 280px; font-family: var(--mono);
+      box-shadow: 0 8px 24px rgba(20,18,16,0.15);
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast-dot { width: 6px; height: 6px; border-radius: 50%; background: #6ee7b7; flex-shrink: 0; }
+    .toast-dot.warn { background: var(--amber-light); }
+    .toast-dot.err { background: #fca5a5; }
+
+    /* spinner */
+    .spin { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(250,248,245,0.3); border-top-color: var(--paper); border-radius: 50%; animation: spin 0.6s linear infinite; }
+    .spin-dark { border-color: rgba(20,18,16,0.15); border-top-color: var(--ink); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-row { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--ink3); font-family: var(--mono); font-size: 12px; }
+
+    /* verify result */
+    .verify-result { padding: 14px; border-radius: var(--r); font-family: var(--mono); font-size: 12px; margin-top: 12px; display: none; border: 1px solid var(--line); background: var(--paper2); white-space: pre-wrap; word-break: break-all; color: var(--ink3); max-height: 240px; overflow-y: auto; line-height: 1.6; }
+    .verify-result.show { display: block; }
+    .verify-result.ok { border-color: rgba(45,106,79,0.2); background: var(--green-bg); color: var(--green); }
+    .verify-result.fail { border-color: rgba(155,44,44,0.2); background: var(--red-bg); color: var(--red); }
+
+    /* field */
+    .field-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .field-group { flex: 1; min-width: 160px; }
+    .field-group label { display: block; font-size: 11px; font-family: var(--mono); color: var(--ink3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .field-group input, .field-group select { width: 100%; padding: 9px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); color: var(--ink); font-size: 13px; font-family: var(--sans); outline: none; transition: 0.15s; }
+    .field-group input:focus, .field-group select:focus { border-color: var(--amber); background: white; }
+    .field-group input::placeholder { color: var(--ink3); opacity: 0.5; }
+
+    /* ─── DOCS ─── */
+    #page-docs {
+      display: none;
+      min-height: 100vh; padding-top: 56px;
+    }
+    #page-docs.active { display: flex; }
+    .docs-layout { display: flex; width: 100%; }
+    .docs-sidebar {
+      width: 240px; flex-shrink: 0; padding: 28px 0;
+      border-right: 1px solid var(--line); background: white;
+      position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto;
+    }
+    .docs-sidebar-section { margin-bottom: 28px; }
+    .docs-sidebar-label {
+      font-family: var(--mono); font-size: 9px; color: var(--ink3); text-transform: uppercase;
+      letter-spacing: 0.12em; padding: 0 20px; margin-bottom: 8px;
+    }
+    .docs-sidebar-link {
+      display: flex; align-items: center; gap: 8px; padding: 7px 20px;
+      font-size: 13px; color: var(--ink3); cursor: pointer; transition: 0.1s;
+      text-decoration: none; border-left: 2px solid transparent;
+    }
+    .docs-sidebar-link:hover { color: var(--ink); background: var(--paper); }
+    .docs-sidebar-link.active { color: var(--amber); border-left-color: var(--amber); background: var(--amber-pale2); }
+    .docs-main { flex: 1; max-width: 740px; padding: 48px 56px 100px; margin: 0 auto; }
+    .docs-section { margin-bottom: 72px; scroll-margin-top: 80px; }
+    .docs-section-title {
+      font-family: var(--display); font-size: 28px; font-weight: 400;
+      color: var(--ink); margin-bottom: 10px; letter-spacing: -0.02em;
+      padding-bottom: 14px; border-bottom: 1px solid var(--line);
+    }
+    .docs-section-sub { font-size: 15px; color: var(--ink3); margin-bottom: 24px; line-height: 1.75; font-weight: 300; }
+    .docs-h3 { font-size: 16px; font-weight: 500; color: var(--ink); margin: 28px 0 10px; letter-spacing: -0.01em; }
+    .docs-p { font-size: 14px; color: var(--ink3); line-height: 1.8; margin-bottom: 16px; }
+    .docs-ul { padding-left: 20px; margin-bottom: 16px; }
+    .docs-ul li { font-size: 14px; color: var(--ink3); line-height: 1.8; margin-bottom: 4px; }
+    .param-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+    .param-table th { font-family: var(--mono); font-size: 9px; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.1em; padding: 8px 12px; background: var(--paper2); border: 1px solid var(--line); text-align: left; }
+    .param-table td { padding: 10px 12px; border: 1px solid var(--line2); vertical-align: top; color: var(--ink3); }
+    .param-table td:first-child { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+    .param-table td:nth-child(2) { font-family: var(--mono); font-size: 11px; color: var(--amber); }
+    .param-table .req { color: var(--red); font-family: var(--mono); font-size: 10px; }
+    .docs-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 4px; font-family: var(--mono); font-size: 10px; }
+    .badge-method-post { background: var(--green-bg); color: var(--green); border: 1px solid rgba(45,106,79,0.15); }
+    .badge-method-get { background: rgba(44,74,155,0.07); color: var(--blue); border: 1px solid rgba(44,74,155,0.15); }
+    .endpoint-card { background: var(--paper2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px 20px; margin-bottom: 14px; }
+    .endpoint-path { font-family: var(--mono); font-size: 13px; color: var(--ink); margin-left: 8px; }
+    .returns-label { font-family: var(--mono); font-size: 10px; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; margin-top: 14px; }
+
+    .dash-view { display: none; }
+    .dash-view.active { display: block; }
+
+    @media (max-width: 700px) {
+      .dash-layout { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; position: static; padding: 8px; overflow-x: auto; flex-direction: row; }
+      .sidebar-section { margin: 0; display: flex; gap: 2px; }
+      .sidebar-label, .sidebar-user { display: none; }
+      .dash-main { padding: 20px 16px; }
+      nav { padding: 0 16px; }
+      .nav-center { display: none; }
+      .qs-wrap { padding: 40px 16px 80px; }
+      .docs-layout { flex-direction: column; }
+      .docs-sidebar { display: none; }
+      .docs-main { padding: 28px 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+  <script>
+    const API = {
+      portal: "http://localhost:4000",
+      sdk: "http://localhost:3002",
+      oidc: "http://localhost:3001",
+    };
+    let state = {
+      token: localStorage.getItem("portalToken") || null,
+      developer: JSON.parse(localStorage.getItem("developer") || "null"),
+      apps: [],
+      currentApp: null,
+    };
+    function authHeaders() {
+      return state.token
+        ? { Authorization: `Bearer ${state.token}`, "Content-Type": "application/json" }
+        : { "Content-Type": "application/json" };
+    }
+    async function api(method, path, body, base = "portal") {
+      const url = (base === "sdk" ? API.sdk : API.portal) + path;
+      const opts = { method, headers: authHeaders() };
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(url, opts);
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw Object.assign(new Error(data.message || data.error_description || data.error || "Request failed"), { status: r.status, data });
+      return data;
+    }
+  </script>
+
+  <!-- NAV -->
+  <nav>
+    <a class="nav-logo" href="#" onclick="showPage('home')">
+      <div class="logo-mark">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <rect x="0.5" y="0.5" width="5" height="5" rx="1" fill="currentColor"/>
+          <rect x="7.5" y="0.5" width="5" height="5" rx="1" fill="currentColor" opacity=".5"/>
+          <rect x="0.5" y="7.5" width="5" height="5" rx="1" fill="currentColor" opacity=".5"/>
+          <rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="currentColor" opacity=".2"/>
+        </svg>
+      </div>
+      OAauth
+    </a>
+    <div class="nav-center" id="nav-links">
+      <button class="nav-link" onclick="showPage('home');setNavActive(this)">Quickstart</button>
+      <button class="nav-link" onclick="showPage('docs');setNavActive(this)">Docs</button>
+      <button class="nav-link" onclick="showPage('dashboard');setNavActive(this);loadDashboard()">Dashboard</button>
+      <button class="nav-link" onclick="showPage('tokens');setNavActive(this)">Token Tools</button>
+    </div>
+    <div class="nav-right" id="nav-right">
+      <button class="btn btn-outline btn-sm" onclick="showPage('login');setNavActive(null)">Sign in</button>
+      <button class="btn btn-solid btn-sm" onclick="showPage('signup');setNavActive(null)">Get started</button>
+    </div>
+  </nav>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast">
+    <span class="toast-dot" id="toast-dot"></span><span id="toast-msg"></span>
+  </div>
+
+  <!-- ══════════════ PAGE: HOME ══════════════ -->
+  <div class="page active" id="page-home">
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-bg"></div>
+      <div class="hero-grid"></div>
+      <div class="hero-inner">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          @oaauth/sdk &nbsp;·&nbsp; v1.0 stable
+        </div>
+        <h1 class="hero-title">
+          Ship auth in<br><em>an afternoon</em>.
+        </h1>
+        <p class="hero-sub">
+          Drop-in OIDC for Node.js. PKCE, session management, token rotation, and role gates — production-ready out of the box.
+        </p>
+        <div class="hero-actions">
+          <button class="btn btn-solid btn-lg" onclick="scrollToStep()">Read the guide</button>
+          <button class="btn btn-outline btn-lg" onclick="showPage('docs');setNavActive(document.querySelector('.nav-link:nth-child(2)'))">API reference</button>
+        </div>
+        <div class="hero-stats">
+          <div>
+            <div class="hero-stat-val">3 min</div>
+            <div class="hero-stat-label">to first login</div>
+          </div>
+          <div style="width:1px;height:36px;background:var(--line)"></div>
+          <div>
+            <div class="hero-stat-val">5 routes</div>
+            <div class="hero-stat-label">full OIDC flow</div>
+          </div>
+          <div style="width:1px;height:36px;background:var(--line)"></div>
+          <div>
+            <div class="hero-stat-val">0 rounds</div>
+            <div class="hero-stat-label">JWKS local verify</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUICKSTART -->
+    <div class="qs-wrap" id="quickstart-steps">
+      <div class="section-label">Developer quickstart</div>
+      <div class="step-list">
+
+        <!-- 1 -->
+        <div class="step" id="step-1">
+          <div class="step-left"><div class="step-num">01</div></div>
+          <div class="step-body">
+            <div class="step-title">Install the SDK <span class="step-tag">one-time</span></div>
+            <p class="step-desc">One package covers PKCE, token exchange, session management, and JWKS verification.</p>
+            <div class="tab-bar">
+              <button class="tab-btn active" onclick="switchTab('pkg',this,'npm')">npm</button>
+              <button class="tab-btn" onclick="switchTab('pkg',this,'yarn')">yarn</button>
+              <button class="tab-btn" onclick="switchTab('pkg',this,'pnpm')">pnpm</button>
+            </div>
+            <div id="pkg-npm" class="tab-content active">
+              <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">bash</span><button class="code-copy-btn" onclick="cp(this,'npm install @oaauth/sdk')">copy</button></div>
+              <pre><code><span class="tf">npm</span> install @oaauth/sdk</code></pre></div>
+            </div>
+            <div id="pkg-yarn" class="tab-content">
+              <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">bash</span><button class="code-copy-btn" onclick="cp(this,'yarn add @oaauth/sdk')">copy</button></div>
+              <pre><code><span class="tf">yarn</span> add @oaauth/sdk</code></pre></div>
+            </div>
+            <div id="pkg-pnpm" class="tab-content">
+              <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">bash</span><button class="code-copy-btn" onclick="cp(this,'pnpm add @oaauth/sdk')">copy</button></div>
+              <pre><code><span class="tf">pnpm</span> add @oaauth/sdk</code></pre></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 -->
+        <div class="step" id="step-2">
+          <div class="step-left"><div class="step-num">02</div></div>
+          <div class="step-body">
+            <div class="step-title">Set environment variables <span class="step-tag">per app</span></div>
+            <p class="step-desc">Grab your SDK key from the <a href="#" onclick="showPage('dashboard');loadDashboard()" style="color:var(--amber);text-decoration:none">dashboard</a>. Internal credentials are resolved server-side.</p>
+            <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">.env</span><button class="code-copy-btn" onclick="cp(this,'SDK_KEY=sdk_live_your_key_here\nSDK_GATEWAY_URL=http://localhost:3002\nOIDC_REDIRECT_URI=http://localhost:4000/callback')">copy</button></div>
+            <pre><code><span class="tk">SDK_KEY</span>=<span class="ts">sdk_live_your_key_here</span>
+<span class="tk">SDK_GATEWAY_URL</span>=<span class="ts">http://localhost:3002</span>
+<span class="tk">OIDC_REDIRECT_URI</span>=<span class="ts">http://localhost:4000/callback</span></code></pre></div>
+            <div class="info-box">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M7 6v4M7 4.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              Both <code class="inline">sdk_live_</code> and <code class="inline">sdk_test_</code> prefixes work. Use test keys during development.
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 -->
+        <div class="step" id="step-3">
+          <div class="step-left"><div class="step-num">03</div></div>
+          <div class="step-body">
+            <div class="step-title">Initialise the client <span class="step-tag">src/auth.js</span></div>
+            <p class="step-desc">Three config values. OIDC endpoints are discovered automatically from your issuer.</p>
+            <div class="tab-bar">
+              <button class="tab-btn active" onclick="switchTab('init',this,'express')">Express</button>
+              <button class="tab-btn" onclick="switchTab('init',this,'next')">Next.js</button>
+              <button class="tab-btn" onclick="switchTab('init',this,'hono')">Hono</button>
+            </div>
+            <div id="init-express" class="tab-content active">
+              <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span><button class="code-copy-btn" onclick="cp(this,`const { AuthClient } = require('@oaauth/sdk');\n\nconst auth = new AuthClient({\n  sdkKey:      process.env.SDK_KEY,\n  gatewayUrl:  process.env.SDK_GATEWAY_URL,\n  redirectUri: process.env.OIDC_REDIRECT_URI,\n});\n\nmodule.exports = auth;`)">copy</button></div>
+              <pre><code><span class="tk">const</span> { <span class="tf">AuthClient</span> } = <span class="tf">require</span>(<span class="ts">'@oaauth/sdk'</span>);
+
+<span class="tk">const</span> auth = <span class="tk">new</span> <span class="tf">AuthClient</span>({
+  sdkKey:      process.env.<span class="tk">SDK_KEY</span>,
+  gatewayUrl:  process.env.<span class="tk">SDK_GATEWAY_URL</span>,
+  redirectUri: process.env.<span class="tk">OIDC_REDIRECT_URI</span>,
+});
+
+module.exports = auth;</code></pre></div>
+            </div>
+            <div id="init-next" class="tab-content">
+              <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">typescript</span><button class="code-copy-btn" onclick="cp(this,`import { AuthClient } from '@oaauth/sdk';\n\nexport const auth = new AuthClient({\n  sdkKey:      process.env.SDK_KEY!,\n  gatewayUrl:  process.env.SDK_GATEWAY_URL!,\n  redirectUri: process.env.OIDC_REDIRECT_URI!,\n});`)">copy</button></div>
+              <pre><code><span class="tk">import</span> { <span class="tf">AuthClient</span> } <span class="tk">from</span> <span class="ts">'@oaauth/sdk'</span>;
+
+<span class="tk">export const</span> auth = <span class="tk">new</span> <span class="tf">AuthClient</span>({
+  sdkKey:      process.env.<span class="tk">SDK_KEY</span>!,
+  gatewayUrl:  process.env.<span class="tk">SDK_GATEWAY_URL</span>!,
+  redirectUri: process.env.<span class="tk">OIDC_REDIRECT_URI</span>!,
+});</code></pre></div>
+            </div>
+            <div id="init-hono" class="tab-content">
+              <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">typescript</span><button class="code-copy-btn" onclick="cp(this,`import { AuthClient } from '@oaauth/sdk';\n\nexport const auth = new AuthClient({\n  sdkKey:      Bun.env.SDK_KEY,\n  gatewayUrl:  Bun.env.SDK_GATEWAY_URL,\n  redirectUri: Bun.env.OIDC_REDIRECT_URI,\n});`)">copy</button></div>
+              <pre><code><span class="tk">import</span> { <span class="tf">AuthClient</span> } <span class="tk">from</span> <span class="ts">'@oaauth/sdk'</span>;
+
+<span class="tk">export const</span> auth = <span class="tk">new</span> <span class="tf">AuthClient</span>({
+  sdkKey:      Bun.env.<span class="tk">SDK_KEY</span>,
+  gatewayUrl:  Bun.env.<span class="tk">SDK_GATEWAY_URL</span>,
+  redirectUri: Bun.env.<span class="tk">OIDC_REDIRECT_URI</span>,
+});</code></pre></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 -->
+        <div class="step" id="step-4">
+          <div class="step-left"><div class="step-num">04</div></div>
+          <div class="step-body">
+            <div class="step-title">Add routes to your app <span class="step-tag">integration</span></div>
+            <p class="step-desc">Five routes cover the full OIDC flow — login, callback, session, refresh, and logout.</p>
+            <div class="snippet-card">
+              <div class="snippet-tabs">
+                <button class="snippet-tab active" onclick="switchSnippet(this,'s-login')">Login</button>
+                <button class="snippet-tab" onclick="switchSnippet(this,'s-callback')">Callback</button>
+                <button class="snippet-tab" onclick="switchSnippet(this,'s-protect')">Protect</button>
+                <button class="snippet-tab" onclick="switchSnippet(this,'s-refresh')">Refresh</button>
+                <button class="snippet-tab" onclick="switchSnippet(this,'s-logout')">Logout</button>
+                <button class="snippet-tab" onclick="switchSnippet(this,'s-roles')">Roles</button>
+                <button class="snippet-tab" onclick="switchSnippet(this,'s-sessions')">Sessions</button>
+                <button class="snippet-tab" onclick="switchSnippet(this,'s-logout-all')">Logout All</button>
+              </div>
+              <div id="s-login" class="tab-content active">
+                <pre><code><span class="tc">// GET /login — redirect user to OIDC provider</span>
+app.<span class="tf">get</span>(<span class="ts">'/login'</span>, auth.login);
+<span class="tc">// auth.login is a pre-bound Express handler.
+// It generates PKCE params, stores state, and redirects.</span></code></pre>
+              </div>
+              <div id="s-callback" class="tab-content">
+                <pre><code><span class="tc">// GET /callback — exchange code, create session</span>
+app.<span class="tf">get</span>(<span class="ts">'/callback'</span>, <span class="tk">async</span> (req, res) => {
+  <span class="tk">const</span> { accessToken, refreshToken, user }
+    = <span class="tk">await</span> auth.<span class="tf">handleCallbackAndCreateSession</span>(req);
+
+  res.<span class="tf">cookie</span>(<span class="ts">'refreshToken'</span>, refreshToken, {
+    httpOnly: <span class="tk">true</span>, sameSite: <span class="ts">'lax'</span>
+  });
+  res.<span class="tf">json</span>({ accessToken, user });
+});</code></pre>
+              </div>
+              <div id="s-protect" class="tab-content">
+                <pre><code><span class="tc">// Protect a single route — req.user is populated</span>
+app.<span class="tf">get</span>(<span class="ts">'/me'</span>, auth.<span class="tf">protect</span>(), (req, res) => {
+  res.<span class="tf">json</span>(req.user); <span class="tc">// { sub, email, name, roles }</span>
+});
+
+<span class="tc">// Optional auth — req.user is null if no token</span>
+app.<span class="tf">get</span>(<span class="ts">'/feed'</span>, auth.<span class="tf">protect</span>({ optional: <span class="tk">true</span> }), handler);
+
+<span class="tc">// Protect an entire router</span>
+<span class="tk">const</span> apiRouter = express.<span class="tf">Router</span>();
+apiRouter.<span class="tf">use</span>(auth.<span class="tf">protect</span>());
+app.<span class="tf">use</span>(<span class="ts">'/api'</span>, apiRouter);</code></pre>
+              </div>
+              <div id="s-refresh" class="tab-content">
+                <pre><code><span class="tc">// POST /refresh — pre-built handler
+// Reads refreshToken from cookie or body.
+// Rotates the token and sets the updated cookie.</span>
+app.<span class="tf">post</span>(<span class="ts">'/refresh'</span>, auth.<span class="tf">refreshRoute</span>());
+
+<span class="tc">// Custom cookie name:</span>
+app.<span class="tf">post</span>(<span class="ts">'/refresh'</span>, auth.<span class="tf">refreshRoute</span>({
+  cookieName: <span class="ts">'rt'</span>
+}));</code></pre>
+              </div>
+              <div id="s-logout" class="tab-content">
+                <pre><code><span class="tc">// POST /logout — pre-built handler
+// Revokes session, clears cookie.</span>
+app.<span class="tf">post</span>(<span class="ts">'/logout'</span>, auth.<span class="tf">logoutRoute</span>());
+
+<span class="tc">// Force-logout all devices for a user:</span>
+<span class="tk">await</span> auth.<span class="tf">revokeAllSessions</span>(req.user.sub);</code></pre>
+              </div>
+              <div id="s-roles" class="tab-content">
+                <pre><code><span class="tc">// requireRole() — compose after protect()</span>
+app.<span class="tf">delete</span>(
+  <span class="ts">'/admin/users/:id'</span>,
+  auth.<span class="tf">protect</span>(),
+  auth.<span class="tf">requireRole</span>(<span class="ts">'admin'</span>),
+  deleteUser
+);
+
+<span class="tc">// Multiple allowed roles:</span>
+auth.<span class="tf">requireRole</span>([<span class="ts">'admin'</span>, <span class="ts">'moderator'</span>])</code></pre>
+              </div>
+              <div id="s-sessions" class="tab-content">
+                <pre><code><span class="tc">// GET /api/me/sessions — list active sessions</span>
+app.<span class="tf">get</span>(<span class="ts">'/api/me/sessions'</span>,
+  auth.<span class="tf">protect</span>(),
+  <span class="tk">async</span> (req, res) => {
+    <span class="tk">const</span> sessions = <span class="tk">await</span> auth.<span class="tf">getSessions</span>(req.user.sub);
+    res.<span class="tf">json</span>({ sessions });
+  }
+);</code></pre>
+              </div>
+              <div id="s-logout-all" class="tab-content">
+                <pre><code><span class="tc">// POST /api/me/logout-all — revoke every session</span>
+app.<span class="tf">post</span>(<span class="ts">'/api/me/logout-all'</span>,
+  auth.<span class="tf">protect</span>(),
+  <span class="tk">async</span> (req, res) => {
+    <span class="tk">const</span> result = <span class="tk">await</span> auth.<span class="tf">revokeAllSessions</span>(req.user.sub);
+    res.<span class="tf">clearCookie</span>(<span class="ts">'refreshToken'</span>);
+    res.<span class="tf">json</span>({ success: <span class="tk">true</span>, revoked: result.revoked });
+  }
+);</code></pre>
+              </div>
+            </div>
+            <div class="info-box" style="margin-top:0">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1l1.5 4.5H13L9.5 8l1.5 4.5L7 10 3 12.5 4.5 8 1 5.5h4.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+              Tokens are verified locally via JWKS by default — no gateway round-trip per request. Set <code class="inline">localVerify: false</code> to always verify via gateway.
+            </div>
+          </div>
+        </div>
+
+        <!-- 5 -->
+        <div class="step" id="step-5">
+          <div class="step-left"><div class="step-num">05</div></div>
+          <div class="step-body">
+            <div class="step-title">Full working server <span class="step-tag">copy-paste</span></div>
+            <p class="step-desc">A complete Express server using the SDK — every route, proper error handling.</p>
+            <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript — server.js</span><button class="code-copy-btn" onclick="cp(this,fullTestServer())">copy</button></div>
+            <pre><code><span class="tc">// Install: npm i express cookie-parser @oaauth/sdk dotenv</span>
+<span class="tf">require</span>(<span class="ts">'dotenv'</span>).<span class="tf">config</span>();
+<span class="tk">const</span> express  = <span class="tf">require</span>(<span class="ts">'express'</span>);
+<span class="tk">const</span> cookies  = <span class="tf">require</span>(<span class="ts">'cookie-parser'</span>);
+<span class="tk">const</span> { <span class="tf">AuthClient</span> } = <span class="tf">require</span>(<span class="ts">'@oaauth/sdk'</span>);
+
+<span class="tk">const</span> app  = <span class="tf">express</span>();
+<span class="tk">const</span> auth = <span class="tk">new</span> <span class="tf">AuthClient</span>({
+  sdkKey:      process.env.<span class="tk">SDK_KEY</span>,
+  gatewayUrl:  process.env.<span class="tk">SDK_GATEWAY_URL</span>,
+  redirectUri: process.env.<span class="tk">OIDC_REDIRECT_URI</span>,
+});
+
+app.<span class="tf">use</span>(express.<span class="tf">json</span>());
+app.<span class="tf">use</span>(<span class="tf">cookies</span>());
+
+app.<span class="tf">get</span>(<span class="ts">'/login'</span>,    auth.login);
+app.<span class="tf">get</span>(<span class="ts">'/callback'</span>, <span class="tk">async</span> (req, res) => {
+  <span class="tk">try</span> {
+    <span class="tk">const</span> result = <span class="tk">await</span> auth.<span class="tf">handleCallbackAndCreateSession</span>(req);
+    res.<span class="tf">cookie</span>(<span class="ts">'refreshToken'</span>, result.refreshToken,
+      { httpOnly: <span class="tk">true</span>, sameSite: <span class="ts">'lax'</span> });
+    res.<span class="tf">json</span>({ accessToken: result.accessToken, user: result.user });
+  } <span class="tk">catch</span>(e) { res.<span class="tf">status</span>(<span class="tn">400</span>).<span class="tf">json</span>({ error: e.message }); }
+});
+app.<span class="tf">post</span>(<span class="ts">'/refresh'</span>, auth.<span class="tf">refreshRoute</span>());
+app.<span class="tf">post</span>(<span class="ts">'/logout'</span>,  auth.<span class="tf">logoutRoute</span>());
+app.<span class="tf">get</span>(<span class="ts">'/me'</span>, auth.<span class="tf">protect</span>(), (req,res) => res.<span class="tf">json</span>(req.user));
+app.<span class="tf">listen</span>(<span class="tn">4001</span>);</code></pre></div>
+            <div class="warn-box">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L13 12H1L7 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 6v3M7 10.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              Install dependencies first: <code class="inline">npm i express cookie-parser @oaauth/sdk dotenv</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE: DOCS ══════════════ -->
+  <div class="page" id="page-docs">
+    <div class="docs-layout">
+      <div class="docs-sidebar">
+        <div class="docs-sidebar-section">
+          <div class="docs-sidebar-label">Getting started</div>
+          <a class="docs-sidebar-link active" onclick="scrollDoc('doc-overview')">Overview</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-install')">Installation</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-config')">Configuration</a>
+        </div>
+        <div class="docs-sidebar-section">
+          <div class="docs-sidebar-label">Core API</div>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-authclient')">AuthClient</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-login')">auth.login</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-callback')">handleCallback</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-protect')">auth.protect()</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-roles')">requireRole()</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-refresh')">refreshRoute()</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-logout')">logoutRoute()</a>
+        </div>
+        <div class="docs-sidebar-section">
+          <div class="docs-sidebar-label">Sessions</div>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-sessions')">getSessions()</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-revoke')">revokeAllSessions()</a>
+        </div>
+        <div class="docs-sidebar-section">
+          <div class="docs-sidebar-label">SDK Gateway</div>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-sdk-verify')">Token Verify</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-sdk-session')">Session Create</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-sdk-refresh')">Session Refresh</a>
+          <a class="docs-sidebar-link" onclick="scrollDoc('doc-sdk-logout')">Session Revoke</a>
+        </div>
+      </div>
+      <div class="docs-main">
+
+        <div class="docs-section" id="doc-overview">
+          <div class="docs-section-title">Overview</div>
+          <p class="docs-section-sub">OAauth is an auth infrastructure layer for Node.js applications. It handles the full OIDC flow — PKCE generation, token exchange, session lifecycle, and JWT verification — so your application never touches raw credentials.</p>
+          <div class="info-box">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M7 6v4M7 4.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Tokens are verified locally via JWKS by default. This means zero network latency on protected routes. No gateway call happens per request unless you set <code class="inline">localVerify: false</code>.
+          </div>
+          <div class="docs-h3">How it works</div>
+          <p class="docs-p">When a user logs in, your server redirects them to the OIDC provider via <code class="inline">auth.login</code>. After the provider authenticates the user, it redirects back to your <code class="inline">/callback</code> route. The SDK exchanges the authorization code for tokens, creates an opaque session (stored in the SDK gateway), and returns an access token and refresh token to your application.</p>
+          <p class="docs-p">Your frontend holds the short-lived access token in memory. The refresh token lives in an httpOnly cookie, invisible to JavaScript. When the access token expires, your frontend calls <code class="inline">/refresh</code> and gets a new pair — silently, without the user noticing.</p>
+        </div>
+
+        <div class="docs-section" id="doc-install">
+          <div class="docs-section-title">Installation</div>
+          <p class="docs-section-sub">The SDK requires Node.js 18 or later.</p>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">bash</span></div>
+          <pre><code><span class="tc"># Choose your package manager</span>
+<span class="tf">npm</span> install @oaauth/sdk
+<span class="tf">yarn</span> add @oaauth/sdk
+<span class="tf">pnpm</span> add @oaauth/sdk</code></pre></div>
+          <p class="docs-p">You will also need <code class="inline">cookie-parser</code> if you are using Express, as the SDK reads and writes cookies via <code class="inline">req.cookies</code>.</p>
+        </div>
+
+        <div class="docs-section" id="doc-config">
+          <div class="docs-section-title">Configuration</div>
+          <p class="docs-section-sub">All configuration is passed to the <code class="inline">AuthClient</code> constructor. Sensitive values should come from environment variables — never hardcode credentials.</p>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">.env</span></div>
+          <pre><code><span class="tk">SDK_KEY</span>=<span class="ts">sdk_live_your_key_here</span>
+<span class="tk">SDK_GATEWAY_URL</span>=<span class="ts">http://localhost:3002</span>
+<span class="tk">OIDC_REDIRECT_URI</span>=<span class="ts">http://localhost:4000/callback</span></code></pre></div>
+          <table class="param-table">
+            <thead><tr><th>Key</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>SDK_KEY</td><td>string</td><td class="req">required</td><td>Your SDK key from the dashboard. Prefix <code class="inline">sdk_live_</code> for production, <code class="inline">sdk_test_</code> for development.</td></tr>
+              <tr><td>SDK_GATEWAY_URL</td><td>string</td><td class="req">required</td><td>Base URL of the OAauth SDK gateway service.</td></tr>
+              <tr><td>OIDC_REDIRECT_URI</td><td>string</td><td class="req">required</td><td>The callback URL registered in your application. Must exactly match a URI registered in the dashboard.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="docs-section" id="doc-authclient">
+          <div class="docs-section-title">AuthClient</div>
+          <p class="docs-section-sub">The main class. Instantiate once and export — import the instance wherever you need auth logic.</p>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span></div>
+          <pre><code><span class="tk">const</span> { <span class="tf">AuthClient</span> } = <span class="tf">require</span>(<span class="ts">'@oaauth/sdk'</span>);
+
+<span class="tk">const</span> auth = <span class="tk">new</span> <span class="tf">AuthClient</span>({
+  sdkKey:      process.env.<span class="tk">SDK_KEY</span>,
+  gatewayUrl:  process.env.<span class="tk">SDK_GATEWAY_URL</span>,
+  redirectUri: process.env.<span class="tk">OIDC_REDIRECT_URI</span>,
+
+  <span class="tc">// Optional — defaults shown</span>
+  localVerify: <span class="tk">true</span>,    <span class="tc">// verify tokens via JWKS locally</span>
+  sessionTtl:  <span class="tn">604800</span>,  <span class="tc">// refresh token TTL in seconds (7d)</span>
+});</code></pre></div>
+        </div>
+
+        <div class="docs-section" id="doc-login">
+          <div class="docs-section-title">auth.login</div>
+          <p class="docs-section-sub">An Express request handler. Wire it directly as a route callback — no wrapper needed.</p>
+          <div class="endpoint-card">
+            <span class="docs-badge badge-method-get">GET</span>
+            <span class="endpoint-path">/login</span>
+          </div>
+          <p class="docs-p">When a user hits this route, the SDK generates a PKCE code verifier and challenge, stores state in a short-lived cookie, and redirects the user to the OIDC provider's authorization endpoint. No configuration beyond the initial <code class="inline">AuthClient</code> setup is required.</p>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span></div>
+          <pre><code>app.<span class="tf">get</span>(<span class="ts">'/login'</span>, auth.login);</code></pre></div>
+        </div>
+
+        <div class="docs-section" id="doc-callback">
+          <div class="docs-section-title">handleCallbackAndCreateSession()</div>
+          <p class="docs-section-sub">Exchanges the authorization code for tokens and creates a session in the SDK gateway. Returns the access token, refresh token, and user profile.</p>
+          <div class="endpoint-card">
+            <span class="docs-badge badge-method-get">GET</span>
+            <span class="endpoint-path">/callback</span>
+          </div>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span></div>
+          <pre><code>app.<span class="tf">get</span>(<span class="ts">'/callback'</span>, <span class="tk">async</span> (req, res) => {
+  <span class="tk">const</span> { accessToken, refreshToken, user }
+    = <span class="tk">await</span> auth.<span class="tf">handleCallbackAndCreateSession</span>(req);
+
+  res.<span class="tf">cookie</span>(<span class="ts">'refreshToken'</span>, refreshToken, {
+    httpOnly: <span class="tk">true</span>, sameSite: <span class="ts">'lax'</span>,
+    maxAge: <span class="tn">7</span> * <span class="tn">24</span> * <span class="tn">60</span> * <span class="tn">60</span> * <span class="tn">1000</span>
+  });
+  res.<span class="tf">json</span>({ accessToken, user });
+});</code></pre></div>
+          <div class="returns-label">Returns</div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>accessToken</td><td>string</td><td>Short-lived JWT. Pass as <code class="inline">Authorization: Bearer &lt;token&gt;</code>. Expires in 15 minutes.</td></tr>
+              <tr><td>refreshToken</td><td>string</td><td>Opaque long-lived token. Store in an httpOnly cookie. Used to rotate access tokens.</td></tr>
+              <tr><td>user</td><td>object</td><td>OIDC user claims: <code class="inline">{ sub, email, name, roles }</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="docs-section" id="doc-protect">
+          <div class="docs-section-title">auth.protect()</div>
+          <p class="docs-section-sub">Middleware factory that validates the access token on each request and populates <code class="inline">req.user</code>. Tokens are verified locally by default — no network call required.</p>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span></div>
+          <pre><code><span class="tc">// Require authentication</span>
+app.<span class="tf">get</span>(<span class="ts">'/me'</span>, auth.<span class="tf">protect</span>(), (req, res) => {
+  res.<span class="tf">json</span>(req.user); <span class="tc">// { sub, email, name, roles }</span>
+});
+
+<span class="tc">// Optional — req.user is null for unauthenticated requests</span>
+app.<span class="tf">get</span>(<span class="ts">'/feed'</span>, auth.<span class="tf">protect</span>({ optional: <span class="tk">true</span> }), handler);
+
+<span class="tc">// Apply to an entire router</span>
+router.<span class="tf">use</span>(auth.<span class="tf">protect</span>());</code></pre></div>
+          <table class="param-table">
+            <thead><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>optional</td><td>boolean</td><td>false</td><td>When true, unauthenticated requests pass through with <code class="inline">req.user = null</code> instead of returning 401.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="docs-section" id="doc-roles">
+          <div class="docs-section-title">requireRole()</div>
+          <p class="docs-section-sub">Middleware that checks whether <code class="inline">req.user.roles</code> includes the required role. Must be composed after <code class="inline">auth.protect()</code>.</p>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span></div>
+          <pre><code><span class="tc">// Single role</span>
+app.<span class="tf">delete</span>(
+  <span class="ts">'/admin/users/:id'</span>,
+  auth.<span class="tf">protect</span>(),
+  auth.<span class="tf">requireRole</span>(<span class="ts">'admin'</span>),
+  deleteUser
+);
+
+<span class="tc">// Multiple roles — user must have at least one</span>
+auth.<span class="tf">requireRole</span>([<span class="ts">'admin'</span>, <span class="ts">'moderator'</span>])</code></pre></div>
+        </div>
+
+        <div class="docs-section" id="doc-refresh">
+          <div class="docs-section-title">refreshRoute()</div>
+          <p class="docs-section-sub">A pre-built Express route handler that reads the refresh token from an httpOnly cookie (or request body), rotates the token pair, and sets the new cookie.</p>
+          <div class="endpoint-card">
+            <span class="docs-badge badge-method-post">POST</span>
+            <span class="endpoint-path">/refresh</span>
+          </div>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span></div>
+          <pre><code><span class="tc">// Default — reads from cookie named 'refreshToken'</span>
+app.<span class="tf">post</span>(<span class="ts">'/refresh'</span>, auth.<span class="tf">refreshRoute</span>());
+
+<span class="tc">// Custom cookie name</span>
+app.<span class="tf">post</span>(<span class="ts">'/refresh'</span>, auth.<span class="tf">refreshRoute</span>({ cookieName: <span class="ts">'rt'</span> }));</code></pre></div>
+        </div>
+
+        <div class="docs-section" id="doc-logout">
+          <div class="docs-section-title">logoutRoute()</div>
+          <p class="docs-section-sub">A pre-built handler that revokes the current session in the SDK gateway and clears the refresh token cookie.</p>
+          <div class="endpoint-card">
+            <span class="docs-badge badge-method-post">POST</span>
+            <span class="endpoint-path">/logout</span>
+          </div>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span></div>
+          <pre><code>app.<span class="tf">post</span>(<span class="ts">'/logout'</span>, auth.<span class="tf">logoutRoute</span>());</code></pre></div>
+        </div>
+
+        <div class="docs-section" id="doc-sessions">
+          <div class="docs-section-title">getSessions()</div>
+          <p class="docs-section-sub">Fetches all active sessions for a given user from the SDK gateway. Useful for building a "logged-in devices" UI.</p>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span></div>
+          <pre><code>app.<span class="tf">get</span>(<span class="ts">'/api/me/sessions'</span>,
+  auth.<span class="tf">protect</span>(),
+  <span class="tk">async</span> (req, res) => {
+    <span class="tk">const</span> sessions = <span class="tk">await</span> auth.<span class="tf">getSessions</span>(req.user.sub);
+    res.<span class="tf">json</span>({ sessions });
+  }
+);</code></pre></div>
+          <div class="returns-label">Session object</div>
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>sessionId</td><td>string</td><td>Unique session identifier.</td></tr>
+              <tr><td>deviceName</td><td>string</td><td>Inferred from user-agent string.</td></tr>
+              <tr><td>ip</td><td>string</td><td>IP address at time of login.</td></tr>
+              <tr><td>lastUsedAt</td><td>string</td><td>ISO 8601 timestamp of the last token use.</td></tr>
+              <tr><td>expiresAt</td><td>string</td><td>ISO 8601 expiry timestamp.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="docs-section" id="doc-revoke">
+          <div class="docs-section-title">revokeAllSessions()</div>
+          <p class="docs-section-sub">Immediately invalidates every active session for a user. All devices are logged out. Commonly used for security events or account deletion.</p>
+          <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span></div>
+          <pre><code>app.<span class="tf">post</span>(<span class="ts">'/api/me/logout-all'</span>,
+  auth.<span class="tf">protect</span>(),
+  <span class="tk">async</span> (req, res) => {
+    <span class="tk">const</span> result = <span class="tk">await</span> auth.<span class="tf">revokeAllSessions</span>(req.user.sub);
+    res.<span class="tf">clearCookie</span>(<span class="ts">'refreshToken'</span>);
+    res.<span class="tf">json</span>({ success: <span class="tk">true</span>, revoked: result.revoked });
+  }
+);</code></pre></div>
+        </div>
+
+        <div class="docs-section" id="doc-sdk-verify">
+          <div class="docs-section-title">SDK Gateway — Token Verify</div>
+          <p class="docs-section-sub">Directly call the SDK gateway to verify an access token and decode its payload.</p>
+          <div class="endpoint-card">
+            <span class="docs-badge badge-method-post">POST</span>
+            <span class="endpoint-path">/sdk/token/verify</span>
+          </div>
+          <table class="param-table">
+            <thead><tr><th>Header</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>x-sdk-key</td><td class="req">required</td><td>Your SDK key.</td></tr>
+            </tbody>
+          </table>
+          <table class="param-table">
+            <thead><tr><th>Body</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>token</td><td>string</td><td>The access token JWT to verify.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="docs-section" id="doc-sdk-session">
+          <div class="docs-section-title">SDK Gateway — Session Create</div>
+          <p class="docs-section-sub">Manually create a session for a verified user identity. Useful for custom auth flows or migration scenarios.</p>
+          <div class="endpoint-card">
+            <span class="docs-badge badge-method-post">POST</span>
+            <span class="endpoint-path">/sdk/session/create</span>
+          </div>
+          <table class="param-table">
+            <thead><tr><th>Body</th><th>Type</th><th>Required</th></tr></thead>
+            <tbody>
+              <tr><td>sub</td><td>string</td><td class="req">required</td></tr>
+              <tr><td>email</td><td>string</td><td class="req">required</td></tr>
+              <tr><td>name</td><td>string</td><td class="req">required</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="docs-section" id="doc-sdk-refresh">
+          <div class="docs-section-title">SDK Gateway — Session Refresh</div>
+          <p class="docs-section-sub">Rotate a refresh token. Returns a new access token and refresh token pair. The old refresh token is invalidated immediately.</p>
+          <div class="endpoint-card">
+            <span class="docs-badge badge-method-post">POST</span>
+            <span class="endpoint-path">/sdk/session/refresh</span>
+          </div>
+        </div>
+
+        <div class="docs-section" id="doc-sdk-logout">
+          <div class="docs-section-title">SDK Gateway — Session Revoke</div>
+          <p class="docs-section-sub">Revoke a single session by refresh token, or all sessions for a user by userId.</p>
+          <div class="endpoint-card">
+            <span class="docs-badge badge-method-post">POST</span>
+            <span class="endpoint-path">/sdk/session/logout</span>
+          </div>
+          <div class="endpoint-card">
+            <span class="docs-badge badge-method-post">POST</span>
+            <span class="endpoint-path">/sdk/session/logout-all</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE: LOGIN ══════════════ -->
+  <div class="page" id="page-login">
+    <div class="auth-shell">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="logo-mark" style="width:20px;height:20px;border-radius:4px">
+            <svg width="10" height="10" viewBox="0 0 13 13" fill="none"><rect x="0.5" y="0.5" width="5" height="5" rx="1" fill="currentColor"/><rect x="7.5" y="0.5" width="5" height="5" rx="1" fill="currentColor" opacity=".5"/><rect x="0.5" y="7.5" width="5" height="5" rx="1" fill="currentColor" opacity=".5"/><rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="currentColor" opacity=".2"/></svg>
+          </div>
+          OAauth
+        </div>
+        <div class="auth-title">Welcome back</div>
+        <div class="auth-sub">Sign in to your developer account</div>
+        <div class="form-error" id="login-err"></div>
+        <div class="form-group">
+          <label>Email</label>
+          <input class="form-input" type="email" id="login-email" placeholder="you@example.com" autocomplete="email"/>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input class="form-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"/>
+        </div>
+        <button class="auth-submit" id="login-btn" onclick="doLogin()">Sign in</button>
+        <p class="auth-switch">No account? <a onclick="showPage('signup');setNavActive(null)">Create one free</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE: SIGNUP ══════════════ -->
+  <div class="page" id="page-signup">
+    <div class="auth-shell">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="logo-mark" style="width:20px;height:20px;border-radius:4px">
+            <svg width="10" height="10" viewBox="0 0 13 13" fill="none"><rect x="0.5" y="0.5" width="5" height="5" rx="1" fill="currentColor"/><rect x="7.5" y="0.5" width="5" height="5" rx="1" fill="currentColor" opacity=".5"/><rect x="0.5" y="7.5" width="5" height="5" rx="1" fill="currentColor" opacity=".5"/><rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="currentColor" opacity=".2"/></svg>
+          </div>
+          OAauth
+        </div>
+        <div class="auth-title">Create account</div>
+        <div class="auth-sub">Start building with OAauth today</div>
+        <div class="form-error" id="signup-err"></div>
+        <div class="form-group"><label>Full name</label><input class="form-input" type="text" id="signup-name" placeholder="Jane Dev"/></div>
+        <div class="form-group"><label>Email</label><input class="form-input" type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"/></div>
+        <div class="form-group"><label>Company <span style="color:var(--ink3);font-weight:300">(optional)</span></label><input class="form-input" type="text" id="signup-company" placeholder="Acme Inc"/></div>
+        <div class="form-group"><label>Password</label><input class="form-input" type="password" id="signup-pass" placeholder="Min. 8 characters" autocomplete="new-password"/></div>
+        <button class="auth-submit" id="signup-btn" onclick="doSignup()">Create account</button>
+        <p class="auth-switch">Already have an account? <a onclick="showPage('login');setNavActive(null)">Sign in</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE: DASHBOARD ══════════════ -->
+  <div class="page" id="page-dashboard">
+    <div class="dash-layout">
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-label">Overview</div>
+          <button class="sidebar-link active" onclick="switchDash(this,'dv-home')">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="5.5" height="5.5" rx="1.2" stroke="currentColor" stroke-width="1.2"/><rect x="8.5" y="1" width="5.5" height="5.5" rx="1.2" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="8.5" width="5.5" height="5.5" rx="1.2" stroke="currentColor" stroke-width="1.2"/><rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1.2" stroke="currentColor" stroke-width="1.2"/></svg>
+            Overview
+          </button>
+          <button class="sidebar-link" onclick="switchDash(this,'dv-apps');renderApps()">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="1.5" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 7.5h5M7.5 5v5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            Applications <span class="sidebar-badge" id="apps-count">0</span>
+          </button>
+          <button class="sidebar-link" onclick="switchDash(this,'dv-logs')">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M2 4h11M2 7.5h7M2 11h9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            Logs
+          </button>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">Account</div>
+          <button class="sidebar-link" onclick="switchDash(this,'dv-settings')">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            Settings
+          </button>
+          <button class="sidebar-link" style="color:var(--red)" onclick="doLogout()">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M6 2H3a1 1 0 00-1 1v9a1 1 0 001 1h3M10 11l3-3.5L10 4M13 7.5H6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Sign out
+          </button>
+        </div>
+        <div class="sidebar-user" id="sidebar-user">
+          <div style="display:flex;align-items:center;gap:9px">
+            <div class="user-avatar" id="sidebar-initials">--</div>
+            <div>
+              <div style="font-size:12px;font-weight:500;color:var(--ink)" id="sidebar-name">...</div>
+              <div style="font-size:11px;color:var(--ink3);font-family:var(--mono)" id="sidebar-email">...</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <main class="dash-main">
+
+        <!-- OVERVIEW -->
+        <div id="dv-home" class="dash-view active">
+          <div class="dash-header">
+            <div>
+              <div class="page-title" id="dash-greeting">Dashboard</div>
+              <div class="page-sub">Your applications and their status</div>
+            </div>
+            <button class="btn btn-solid btn-sm" onclick="openModal('modal-create-app')">+ New app</button>
+          </div>
+          <div class="stats-row">
+            <div class="stat-card"><div class="stat-val" id="stat-apps">0</div><div class="stat-label">applications</div></div>
+            <div class="stat-card"><div class="stat-val" id="stat-logins">—</div><div class="stat-label">total logins</div></div>
+            <div class="stat-card"><div class="stat-val" id="stat-keys">—</div><div class="stat-label">active sdk keys</div></div>
+          </div>
+          <div class="section-label" style="margin-bottom:16px">Your applications</div>
+          <div class="apps-grid" id="home-apps-grid"><div class="loading-row"><span class="spin spin-dark"></span>Loading...</div></div>
+        </div>
+
+        <!-- APPLICATIONS -->
+        <div id="dv-apps" class="dash-view">
+          <div class="dash-header">
+            <div><div class="page-title">Applications</div><div class="page-sub">Each app has independent credentials</div></div>
+            <button class="btn btn-solid btn-sm" onclick="openModal('modal-create-app')">+ New app</button>
+          </div>
+          <div class="apps-grid" id="apps-grid"><div class="loading-row"><span class="spin spin-dark"></span>Loading...</div></div>
+        </div>
+
+        <!-- APP DETAIL -->
+        <div id="dv-app-detail" class="dash-view">
+          <div style="margin-bottom:16px">
+            <button class="btn btn-ghost btn-sm" onclick="switchDash(null,'dv-apps');renderApps()">← Back</button>
+          </div>
+          <div class="detail-header" id="app-detail-header">Loading...</div>
+          <div id="app-detail-tabs" style="display:flex;gap:2px;margin-bottom:20px;border-bottom:1px solid var(--line)"></div>
+          <div id="app-detail-content"></div>
+        </div>
+
+        <!-- LOGS -->
+        <div id="dv-logs" class="dash-view">
+          <div class="dash-header">
+            <div class="page-title">Request logs</div>
+            <div style="display:flex;gap:8px">
+              <select id="log-app-filter" style="padding:6px 10px;background:white;border:1px solid var(--line);border-radius:var(--r);color:var(--ink3);font-size:12px;font-family:var(--mono);outline:none"><option value="">All apps</option></select>
+              <button class="btn btn-ghost btn-sm" onclick="toast('Live logs coming soon','warn')">Live</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>Method</th><th>Endpoint</th><th>App</th><th>Status</th><th>Latency</th></tr></thead>
+              <tbody id="logs-tbody"><tr><td colspan="6"><div class="loading-row" style="padding:24px">Connect your logging middleware to populate live data</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="dv-settings" class="dash-view">
+          <div class="page-title" style="margin-bottom:24px">Account settings</div>
+          <div class="detail-section">
+            <div class="detail-section-title">Profile</div>
+            <div class="field-row">
+              <div class="field-group"><label>Name</label><input type="text" id="settings-name" placeholder="Your name"/></div>
+              <div class="field-group"><label>Email</label><input type="text" id="settings-email" placeholder="you@example.com" disabled style="opacity:0.5"/></div>
+            </div>
+            <button class="btn btn-solid btn-sm" onclick="toast('Profile update coming soon','warn')">Save changes</button>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">Developer token</div>
+            <div class="cred-box">
+              <div class="cred-row">
+                <span class="cred-label">JWT token</span>
+                <span class="cred-value" id="settings-token" style="font-size:10px">—</span>
+                <button class="cred-copy" onclick="cpField('settings-token',this)">copy</button>
+              </div>
+            </div>
+            <p style="font-size:12px;color:var(--ink3);font-family:var(--mono)">Pass as <code class="inline">Authorization: Bearer &lt;token&gt;</code> to the portal API.</p>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title" style="color:var(--red)">Danger zone</div>
+            <button class="btn btn-danger-soft btn-sm" onclick="doLogout()">Sign out of all sessions</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE: TOKEN TOOLS ══════════════ -->
+  <div class="page" id="page-tokens">
+    <div style="max-width:800px;margin:0 auto;padding:40px 28px 80px">
+      <div class="section-label" style="margin-bottom:32px">Token management</div>
+      <div class="page-title" style="margin-bottom:6px">Token Tools</div>
+      <p style="font-size:14px;color:var(--ink3);margin-bottom:36px;font-weight:300">Inspect, verify, and rotate tokens. All SDK gateway endpoints accessible here.</p>
+
+      <!-- Verify -->
+      <div class="detail-section" style="margin-bottom:16px">
+        <div class="detail-section-title">Verify access token <span style="font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:400">POST /sdk/token/verify</span></div>
+        <p style="font-size:13px;color:var(--ink3);margin-bottom:14px">Paste an access token to verify its signature and decode the payload.</p>
+        <div class="field-group" style="margin-bottom:12px"><label>SDK key (x-sdk-key)</label><input type="text" id="verify-sdk-key" placeholder="sdk_live_..." class="form-input"/></div>
+        <div class="field-group" style="margin-bottom:12px"><label>Access token</label><textarea class="form-input" id="verify-token" rows="4" placeholder="eyJhbGc..." style="resize:vertical;font-family:var(--mono);font-size:12px"></textarea></div>
+        <button class="btn btn-solid btn-sm" onclick="doVerifyToken()">Verify token</button>
+        <div class="verify-result" id="verify-result"></div>
+      </div>
+
+      <!-- Create session -->
+      <div class="detail-section" style="margin-bottom:16px">
+        <div class="detail-section-title">Create session <span style="font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:400">POST /sdk/session/create</span></div>
+        <div class="field-group" style="margin-bottom:10px"><label>SDK key</label><input type="text" id="cs-sdk-key" placeholder="sdk_live_..." class="form-input"/></div>
+        <div class="field-row">
+          <div class="field-group"><label>Sub (OIDC user ID)</label><input type="text" id="cs-sub" placeholder="user-uuid"/></div>
+          <div class="field-group"><label>Email</label><input type="email" id="cs-email" placeholder="user@example.com"/></div>
+        </div>
+        <div class="field-group" style="margin-bottom:12px"><label>Name</label><input type="text" id="cs-name" placeholder="Jane Smith"/></div>
+        <button class="btn btn-solid btn-sm" onclick="doCreateSession()">Create session</button>
+        <div class="verify-result" id="cs-result"></div>
+      </div>
+
+      <!-- Refresh -->
+      <div class="detail-section" style="margin-bottom:16px">
+        <div class="detail-section-title">Refresh session <span style="font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:400">POST /sdk/session/refresh</span></div>
+        <div class="field-group" style="margin-bottom:10px"><label>SDK key</label><input type="text" id="ref-sdk-key" placeholder="sdk_live_..." class="form-input"/></div>
+        <div class="field-group" style="margin-bottom:12px"><label>Refresh token</label><input type="text" id="ref-token" placeholder="opaque refresh token" class="form-input" style="font-family:var(--mono);font-size:12px"/></div>
+        <button class="btn btn-solid btn-sm" onclick="doRefreshSession()">Rotate token</button>
+        <div class="verify-result" id="ref-result"></div>
+      </div>
+
+      <!-- Revoke -->
+      <div class="detail-section" style="margin-bottom:16px">
+        <div class="detail-section-title">Revoke session <span style="font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:400">POST /sdk/session/logout</span></div>
+        <div class="field-group" style="margin-bottom:10px"><label>SDK key</label><input type="text" id="rl-sdk-key" placeholder="sdk_live_..." class="form-input"/></div>
+        <div class="field-group" style="margin-bottom:12px"><label>Refresh token to revoke</label><input type="text" id="rl-token" placeholder="opaque refresh token" class="form-input" style="font-family:var(--mono);font-size:12px"/></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="doRevokeSingle()">Revoke single session</button>
+          <input type="text" id="rl-userid" placeholder="userId for logout-all" style="padding:6px 10px;background:var(--paper2);border:1px solid var(--line);border-radius:var(--r);color:var(--ink);font-family:var(--mono);font-size:12px;outline:none;width:220px"/>
+          <button class="btn btn-danger-soft btn-sm" onclick="doRevokeAll()">Logout all devices</button>
+        </div>
+        <div class="verify-result" id="rl-result"></div>
+      </div>
+
+      <!-- List sessions -->
+      <div class="detail-section">
+        <div class="detail-section-title">List sessions <span style="font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:400">GET /sdk/session/list/:userId</span></div>
+        <div class="field-group" style="margin-bottom:10px"><label>SDK key</label><input type="text" id="ls-sdk-key" placeholder="sdk_live_..." class="form-input"/></div>
+        <div class="field-group" style="margin-bottom:12px"><label>User ID (sub)</label><input type="text" id="ls-userid" placeholder="user-uuid"/></div>
+        <button class="btn btn-solid btn-sm" onclick="doListSessions()">List sessions</button>
+        <div id="ls-result" style="margin-top:12px;display:none">
+          <div style="font-size:11px;font-family:var(--mono);color:var(--ink3);margin-bottom:8px" id="ls-count"></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>Device</th><th>IP</th><th>Last used</th><th>Expires</th></tr></thead>
+            <tbody id="ls-tbody"></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Create App -->
+  <div class="modal-overlay" id="modal-create-app">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('modal-create-app')">×</button>
+      <div class="modal-title">New application</div>
+      <div class="modal-sub">Creates credentials and syncs to the auth service.</div>
+      <div class="form-error" id="capp-err"></div>
+      <div class="form-group"><label>App name</label><input class="form-input" type="text" id="capp-name" placeholder="My App"/></div>
+      <div class="form-group"><label>Description <span style="color:var(--ink3);font-weight:300">(optional)</span></label><input class="form-input" type="text" id="capp-desc" placeholder="What does this app do?"/></div>
+      <div class="form-group"><label>Redirect URIs <span style="color:var(--ink3);font-weight:300">(one per line)</span></label><textarea class="form-input" id="capp-uris" rows="3" placeholder="http://localhost:4000/callback&#10;https://yourapp.com/callback" style="resize:vertical;font-family:var(--mono);font-size:12px"></textarea></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-ghost" onclick="closeModal('modal-create-app')">Cancel</button>
+        <button class="btn btn-solid" id="capp-btn" onclick="doCreateApp()">Create app</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: New creds -->
+  <div class="modal-overlay" id="modal-new-creds">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('modal-new-creds')">×</button>
+      <div class="modal-title">App created</div>
+      <div class="modal-sub">Save these credentials. The client secret is shown only once.</div>
+      <div class="warn-box" style="margin-bottom:16px">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L13 12H1L7 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 6v3M7 10.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Copy your client secret now. It will not be shown again.
+      </div>
+      <div class="cred-box" id="new-creds-box"></div>
+      <button class="btn btn-solid" style="width:100%;margin-top:8px;justify-content:center" onclick="closeModal('modal-new-creds');toast('Credentials saved')">Done</button>
+    </div>
+  </div>
+
+  <script>
+    // ═══ ROUTING ═══
+    function showPage(id) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + id).classList.add('active');
+      window.scrollTo(0, 0);
+    }
+    function setNavActive(el) {
+      document.querySelectorAll('.nav-link').forEach(a => a.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+    function scrollToStep() {
+      document.getElementById('quickstart-steps').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function scrollDoc(id) {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.querySelectorAll('.docs-sidebar-link').forEach(l => l.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+    }
+
+    // ═══ TOAST ═══
+    let _toastT;
+    function toast(msg, type = 'ok') {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      document.getElementById('toast-dot').className = 'toast-dot ' + type;
+      t.classList.add('show');
+      clearTimeout(_toastT);
+      _toastT = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // ═══ MODAL ═══
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('open'); });
+
+    // ═══ COPY ═══
+    function cp(btn, text) {
+      navigator.clipboard.writeText(text).catch(() => {});
+      const o = btn.textContent; btn.textContent = 'copied'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = o; btn.classList.remove('copied'); }, 2000);
+    }
+    function cpField(elId, btn) {
+      const v = document.getElementById(elId).textContent;
+      navigator.clipboard.writeText(v).catch(() => {});
+      const o = btn.textContent; btn.textContent = 'copied!'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = o; btn.classList.remove('copied'); }, 2000);
+    }
+
+    // ═══ TABS ═══
+    function switchTab(group, btn, id) {
+      document.querySelectorAll(`[id^="${group}-"]`).forEach(c => { c.classList.remove('active'); c.style.display = 'none'; });
+      const t = document.getElementById(`${group}-${id}`);
+      if (t) { t.classList.add('active'); t.style.display = 'block'; }
+      btn.closest('.tab-bar').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    function switchSnippet(btn, id) {
+      document.querySelectorAll('[id^="s-"]').forEach(c => { c.classList.remove('active'); c.style.display = 'none'; });
+      const t = document.getElementById(id);
+      if (t) { t.classList.add('active'); t.style.display = 'block'; }
+      btn.closest('.snippet-tabs').querySelectorAll('.snippet-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    // ═══ DASHBOARD VIEWS ═══
+    function switchDash(btn, viewId) {
+      document.querySelectorAll('.dash-view').forEach(v => v.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+      document.querySelectorAll('#page-dashboard .sidebar-link').forEach(l => l.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+    }
+
+    // ═══ AUTH ═══
+    async function doLogin() {
+      const btn = document.getElementById('login-btn');
+      const err = document.getElementById('login-err');
+      err.classList.remove('show');
+      const email = document.getElementById('login-email').value.trim();
+      const pass = document.getElementById('login-pass').value;
+      if (!email || !pass) { err.textContent = 'Email and password are required'; err.classList.add('show'); return; }
+      btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
+      try {
+        const data = await api('POST', '/api/auth/login', { email, password: pass });
+        state.token = data.token; state.developer = data.developer;
+        localStorage.setItem('portalToken', data.token);
+        localStorage.setItem('developer', JSON.stringify(data.developer));
+        updateNavForAuth(); showPage('dashboard'); await loadDashboard();
+        toast('Welcome back, ' + data.developer.name);
+      } catch (e) { err.textContent = e.message; err.classList.add('show'); }
+      finally { btn.disabled = false; btn.textContent = 'Sign in'; }
+    }
+
+    async function doSignup() {
+      const btn = document.getElementById('signup-btn');
+      const err = document.getElementById('signup-err');
+      err.classList.remove('show');
+      const name = document.getElementById('signup-name').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const company = document.getElementById('signup-company').value.trim();
+      const pass = document.getElementById('signup-pass').value;
+      if (!name || !email || !pass) { err.textContent = 'Name, email and password are required'; err.classList.add('show'); return; }
+      if (pass.length < 8) { err.textContent = 'Password must be at least 8 characters'; err.classList.add('show'); return; }
+      btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
+      try {
+        const data = await api('POST', '/api/auth/register', { name, email, password: pass, company });
+        state.token = data.token; state.developer = data.developer;
+        localStorage.setItem('portalToken', data.token);
+        localStorage.setItem('developer', JSON.stringify(data.developer));
+        updateNavForAuth(); showPage('dashboard'); await loadDashboard();
+        toast('Account created. Welcome!');
+      } catch (e) { err.textContent = e.message; err.classList.add('show'); }
+      finally { btn.disabled = false; btn.textContent = 'Create account'; }
+    }
+
+    async function doLogout() {
+      try { await api('POST', '/api/auth/logout'); } catch (_) {}
+      state.token = null; state.developer = null; state.apps = [];
+      localStorage.removeItem('portalToken'); localStorage.removeItem('developer');
+      updateNavForAuth(); showPage('login'); toast('Signed out');
+    }
+
+    function updateNavForAuth() {
+      const nr = document.getElementById('nav-right');
+      const dev = state.developer;
+      if (dev) {
+        nr.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
+          <div class="user-avatar" style="width:30px;height:30px;font-size:12px">${initials(dev.name)}</div>
+          <span style="font-size:13px;color:var(--ink3);font-family:var(--mono)">${dev.email}</span>
+          <button class="btn btn-outline btn-sm" onclick="doLogout()">Sign out</button>
+        </div>`;
+      } else {
+        nr.innerHTML = `<button class="btn btn-outline btn-sm" onclick="showPage('login');setNavActive(null)">Sign in</button>
+          <button class="btn btn-solid btn-sm" onclick="showPage('signup');setNavActive(null)">Get started</button>`;
+      }
+    }
+    function initials(name) { return (name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(); }
+
+    // ═══ DASHBOARD ═══
+    async function loadDashboard() {
+      if (!state.token) { showPage('login'); return; }
+      const dev = state.developer;
+      if (dev) {
+        document.getElementById('sidebar-initials').textContent = initials(dev.name);
+        document.getElementById('sidebar-name').textContent = dev.name;
+        document.getElementById('sidebar-email').textContent = dev.email;
+        document.getElementById('settings-name').value = dev.name;
+        document.getElementById('settings-email').value = dev.email;
+        document.getElementById('settings-token').textContent = state.token;
+      }
+      try {
+        const data = await api('GET', '/api/apps');
+        state.apps = data.apps || [];
+        document.getElementById('apps-count').textContent = state.apps.length;
+        document.getElementById('stat-apps').textContent = state.apps.length;
+        document.getElementById('stat-logins').textContent = state.apps.reduce((s, a) => s + (a.totalLogins || 0), 0);
+        document.getElementById('stat-keys').textContent = state.apps.filter(a => a.active).length;
+        renderHomeApps(); populateLogFilter(); generateFakeLogs();
+      } catch (e) {
+        if (e.status === 401) { doLogout(); return; }
+        toast('Failed to load apps: ' + e.message, 'err');
+      }
+    }
+
+    function renderHomeApps() {
+      const grid = document.getElementById('home-apps-grid');
+      grid.innerHTML = '';
+      state.apps.forEach(app => grid.innerHTML += appCardHTML(app));
+      grid.innerHTML += `<div class="app-card app-new-card" onclick="openModal('modal-create-app')">
+        <div style="width:36px;height:36px;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink3)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <span style="font-size:13px;color:var(--ink3);font-family:var(--mono)">New application</span>
+      </div>`;
+    }
+    function renderApps() {
+      const grid = document.getElementById('apps-grid');
+      grid.innerHTML = '';
+      if (state.apps.length === 0) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink3);font-family:var(--mono);font-size:13px">No apps yet. Create your first one.</div>`;
+      state.apps.forEach(app => grid.innerHTML += appCardHTML(app));
+      grid.innerHTML += `<div class="app-card app-new-card" onclick="openModal('modal-create-app')">
+        <div style="width:36px;height:36px;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink3)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <span style="font-size:13px;color:var(--ink3);font-family:var(--mono)">New application</span>
+      </div>`;
+    }
+
+    function appCardHTML(app) {
+      const live = app.sdkKey && app.sdkKey.startsWith('sdk_live_');
+      const icons = [
+        `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="6" height="6" rx="1.5" fill="var(--amber)" opacity=".7"/><rect x="11" y="3" width="6" height="6" rx="1.5" fill="var(--amber)" opacity=".35"/><rect x="3" y="11" width="6" height="6" rx="1.5" fill="var(--amber)" opacity=".35"/><rect x="11" y="11" width="6" height="6" rx="1.5" fill="var(--amber)" opacity=".15"/></svg>`,
+        `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="var(--ink3)" stroke-width="1.5"/><path d="M10 6v5l3 2" stroke="var(--ink3)" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+        `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 16V8l6-4 6 4v8l-6 3-6-3z" stroke="var(--amber)" stroke-width="1.3" stroke-linejoin="round"/></svg>`
+      ];
+      return `<div class="app-card" onclick="openAppDetail('${app.appId}')">
+        <div class="app-card-top">
+          <div class="app-icon">${icons[app.name.charCodeAt(0) % 3]}</div>
+          <span class="${live ? 'status-live' : 'status-dev'}">${live ? 'live' : 'dev'}</span>
+        </div>
+        <div class="app-name">${app.name}</div>
+        <div class="app-cid">${app.clientId}</div>
+        <div class="app-meta">
+          <div class="app-meta-item">Logins<span>${app.totalLogins || 0}</span></div>
+          <div class="app-meta-item">Redirects<span>${(app.redirectUris || []).length}</span></div>
+        </div>
+      </div>`;
+    }
+
+    async function openAppDetail(appId) {
+      const app = state.apps.find(a => a.appId === appId);
+      if (!app) return;
+      state.currentApp = app;
+      switchDash(null, 'dv-app-detail');
+      const live = app.sdkKey && app.sdkKey.startsWith('sdk_live_');
+      document.getElementById('app-detail-header').innerHTML = `
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div class="detail-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="6" height="6" rx="1.5" fill="var(--amber)" opacity=".7"/><rect x="11" y="3" width="6" height="6" rx="1.5" fill="var(--amber)" opacity=".35"/><rect x="3" y="11" width="6" height="6" rx="1.5" fill="var(--amber)" opacity=".35"/><rect x="11" y="11" width="6" height="6" rx="1.5" fill="var(--amber)" opacity=".15"/></svg></div>
+          <div style="flex:1">
+            <div class="detail-title">${app.name}</div>
+            <div class="detail-meta">
+              <span>${app.clientId}</span>
+              <span class="${live ? 'status-live' : 'status-dev'}">${live ? 'live' : 'dev'}</span>
+              <span>Created ${new Date(app.createdAt).toLocaleDateString()}</span>
+            </div>
+            ${app.description ? `<p style="font-size:13px;color:var(--ink3);margin-top:8px">${app.description}</p>` : ''}
+          </div>
+        </div>`;
+      const tabs = ['Credentials', 'Redirect URIs', 'SDK Config', 'Sync Status'];
+      document.getElementById('app-detail-tabs').innerHTML = tabs.map((t, i) =>
+        `<button class="snippet-tab ${i === 0 ? 'active' : ''}" onclick="switchAppTab(this,'${t.toLowerCase().replace(/\s/g, '-')}')">${t}</button>`
+      ).join('');
+      renderAppTab('credentials', app);
+    }
+
+    function switchAppTab(btn, id) {
+      btn.closest('div').querySelectorAll('.snippet-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderAppTab(id, state.currentApp);
+    }
+
+    function renderAppTab(tab, app) {
+      const c = document.getElementById('app-detail-content');
+      if (tab === 'credentials') {
+        c.innerHTML = `
+          <div class="detail-section">
+            <div class="detail-section-title">API credentials</div>
+            <div class="cred-box">
+              <div class="cred-row"><span class="cred-label">SDK key</span><span class="cred-value" id="dc-sdk">${app.sdkKey}</span><button class="cred-copy" onclick="cpField('dc-sdk',this)">copy</button></div>
+              <div class="cred-row"><span class="cred-label">client_id</span><span class="cred-value" id="dc-cid">${app.clientId}</span><button class="cred-copy" onclick="cpField('dc-cid',this)">copy</button></div>
+              <div class="cred-row"><span class="cred-label">client_secret</span><span class="cred-value">cs_•••••••••••••••••</span><button class="cred-copy" onclick="toast('Rotate to reveal a new secret','warn')">reveal</button></div>
+              <div class="cred-row"><span class="cred-label">app_id</span><span class="cred-value" id="dc-aid">${app.appId}</span><button class="cred-copy" onclick="cpField('dc-aid',this)">copy</button></div>
+            </div>
+            <div class="warn-box"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1L13 12H1L7 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 6v3M7 10.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Client secret is only shown once at creation. Rotate to issue a new one.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+              <button class="btn btn-ghost btn-sm" onclick="doRotateSecret('${app.appId}')">Rotate client secret</button>
+              <button class="btn btn-ghost btn-sm" onclick="doRotateSdkKey('${app.appId}')">Rotate SDK key</button>
+              <button class="btn btn-danger-soft btn-sm" onclick="doDeleteApp('${app.appId}')">Delete app</button>
+            </div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">.env template</div>
+            <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">.env</span><button class="code-copy-btn" onclick="cp(this,'SDK_KEY=${app.sdkKey}\nSDK_GATEWAY_URL=${API.sdk}\nOIDC_REDIRECT_URI=${(app.redirectUris || [''])[0]}')">copy</button></div>
+            <pre><code><span class="tk">SDK_KEY</span>=<span class="ts">${app.sdkKey}</span>
+<span class="tk">SDK_GATEWAY_URL</span>=<span class="ts">${API.sdk}</span>
+<span class="tk">OIDC_REDIRECT_URI</span>=<span class="ts">${(app.redirectUris || [''])[0]}</span></code></pre></div>
+          </div>`;
+      } else if (tab === 'redirect-uris') {
+        const uris = app.redirectUris || [];
+        c.innerHTML = `
+          <div class="detail-section">
+            <div class="detail-section-title">Registered redirect URIs</div>
+            <p style="font-size:13px;color:var(--ink3);margin-bottom:14px">The callback URL in your app must exactly match one entry here.</p>
+            <div class="uri-list" id="uri-list-edit">
+              ${uris.map(u => `<div class="uri-tag"><span>${u}</span><button class="uri-del" onclick="this.closest('.uri-tag').remove()">×</button></div>`).join('')}
+            </div>
+            <div class="uri-add"><input type="text" id="uri-new" placeholder="https://yourapp.com/callback"/>
+            <button class="btn btn-ghost btn-sm" onclick="addUriToList()">Add</button></div>
+            <button class="btn btn-solid btn-sm" style="margin-top:14px" onclick="doUpdateUris('${app.appId}')">Save changes</button>
+          </div>
+          <div class="info-box"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M7 6v4M7 4.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Wildcards are not supported. Each URI must be registered explicitly.</div>`;
+      } else if (tab === 'sdk-config') {
+        c.innerHTML = `<div class="loading-row"><span class="spin spin-dark"></span>Loading config...</div>`;
+        api('GET', `/api/apps/${app.appId}/sdk-config`)
+          .then(data => {
+            c.innerHTML = `
+              <div class="detail-section"><div class="detail-section-title">SDK init code</div>
+              <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span><button class="code-copy-btn" onclick="cp(this,document.getElementById('sdk-init-code').textContent)">copy</button></div>
+              <pre><code id="sdk-init-code">${escHTML(data.sdkInit)}</code></pre></div></div>
+              <div class="detail-section"><div class="detail-section-title">Express route setup</div>
+              <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">javascript</span><button class="code-copy-btn" onclick="cp(this,document.getElementById('sdk-routes-code').textContent)">copy</button></div>
+              <pre><code id="sdk-routes-code">${escHTML(data.expressRoutes)}</code></pre></div></div>`;
+          }).catch(e => { c.innerHTML = `<div class="warn-box">Failed to load config: ${e.message}</div>`; });
+      } else if (tab === 'sync-status') {
+        c.innerHTML = `<div class="loading-row"><span class="spin spin-dark"></span>Checking sync...</div>`;
+        api('GET', `/api/apps/${app.appId}/sync-status`)
+          .then(data => {
+            c.innerHTML = `
+              <div class="detail-section"><div class="detail-section-title">Auth service sync</div>
+              <div class="${data.synced ? 'info-box' : 'warn-box'}" style="margin-bottom:12px">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">${data.synced ? '<circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>' : '<path d="M7 1L13 12H1L7 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 6v3M7 10.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>'}</svg>
+                <span>${data.message}</span>
+              </div>
+              <div class="cred-box">
+                <div class="cred-row"><span class="cred-label">App ID</span><span class="cred-value">${data.appId}</span></div>
+                <div class="cred-row"><span class="cred-label">Synced</span><span class="cred-value" style="color:${data.synced ? 'var(--green)' : 'var(--red)'}">${data.synced ? 'yes' : 'no'}</span></div>
+              </div>
+              ${!data.synced ? `<button class="btn btn-solid btn-sm" onclick="doSyncRetry('${app.appId}')">Retry sync</button>` : ''}
+              </div>`;
+          }).catch(e => { c.innerHTML = `<div class="warn-box">Failed: ${e.message}</div>`; });
+      }
+    }
+
+    function escHTML(str) { return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function addUriToList() {
+      const inp = document.getElementById('uri-new'); const v = inp.value.trim(); if (!v) return;
+      const list = document.getElementById('uri-list-edit'); const div = document.createElement('div');
+      div.className = 'uri-tag'; div.innerHTML = `<span>${v}</span><button class="uri-del" onclick="this.closest('.uri-tag').remove()">×</button>`;
+      list.appendChild(div); inp.value = '';
+    }
+
+    // ═══ APP CRUD ═══
+    async function doCreateApp() {
+      const btn = document.getElementById('capp-btn'); const err = document.getElementById('capp-err'); err.classList.remove('show');
+      const name = document.getElementById('capp-name').value.trim();
+      const desc = document.getElementById('capp-desc').value.trim();
+      const urisRaw = document.getElementById('capp-uris').value.trim();
+      if (!name) { err.textContent = 'App name is required'; err.classList.add('show'); return; }
+      const redirectUris = urisRaw.split('\n').map(u => u.trim()).filter(Boolean);
+      if (redirectUris.length === 0) { err.textContent = 'At least one redirect URI is required'; err.classList.add('show'); return; }
+      btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Creating...';
+      try {
+        const data = await api('POST', '/api/apps', { name, description: desc, redirectUris });
+        closeModal('modal-create-app');
+        document.getElementById('capp-name').value = ''; document.getElementById('capp-desc').value = ''; document.getElementById('capp-uris').value = '';
+        showNewCreds(data.app);
+        const appsData = await api('GET', '/api/apps');
+        state.apps = appsData.apps || [];
+        document.getElementById('apps-count').textContent = state.apps.length;
+        document.getElementById('stat-apps').textContent = state.apps.length;
+        renderHomeApps(); toast('App created: ' + data.app.name);
+      } catch (e) { err.textContent = e.message; err.classList.add('show'); }
+      finally { btn.disabled = false; btn.textContent = 'Create app'; }
+    }
+
+    function showNewCreds(app) {
+      document.getElementById('new-creds-box').innerHTML = `
+        <div class="cred-row"><span class="cred-label">SDK key</span><span class="cred-value" id="nc-sdk">${app.sdkKey}</span><button class="cred-copy" onclick="cpField('nc-sdk',this)">copy</button></div>
+        <div class="cred-row"><span class="cred-label">client_id</span><span class="cred-value" id="nc-cid">${app.clientId}</span><button class="cred-copy" onclick="cpField('nc-cid',this)">copy</button></div>
+        <div class="cred-row"><span class="cred-label">client_secret</span><span class="cred-value" id="nc-cs">${app.clientSecret}</span><button class="cred-copy" onclick="cpField('nc-cs',this)">copy</button></div>`;
+      openModal('modal-new-creds');
+    }
+
+    async function doRotateSecret(appId) {
+      if (!confirm('Rotate the client secret? Existing OIDC sessions may break.')) return;
+      try { const data = await api('POST', `/api/apps/${appId}/rotate-secret`); toast('Client secret rotated'); const idx = state.apps.findIndex(a => a.appId === appId); if (idx >= 0) state.apps[idx] = data.app; }
+      catch (e) { toast('Rotate failed: ' + e.message, 'err'); }
+    }
+    async function doRotateSdkKey(appId) {
+      if (!confirm('Rotate the SDK key? Update your environment variables after rotation.')) return;
+      try { const data = await api('POST', `/api/apps/${appId}/rotate-sdk-key`); toast('SDK key rotated — update your .env', 'warn'); const idx = state.apps.findIndex(a => a.appId === appId); if (idx >= 0) { state.apps[idx].sdkKey = data.sdkKey; state.currentApp = state.apps[idx]; } openAppDetail(appId); }
+      catch (e) { toast('Rotate failed: ' + e.message, 'err'); }
+    }
+    async function doDeleteApp(appId) {
+      if (!confirm('Delete this app? This is irreversible.')) return;
+      try { await api('DELETE', `/api/apps/${appId}`); state.apps = state.apps.filter(a => a.appId !== appId); document.getElementById('apps-count').textContent = state.apps.length; document.getElementById('stat-apps').textContent = state.apps.length; switchDash(null, 'dv-apps'); renderApps(); renderHomeApps(); toast('App deleted'); }
+      catch (e) { toast('Delete failed: ' + e.message, 'err'); }
+    }
+    async function doUpdateUris(appId) {
+      const uris = [...document.querySelectorAll('#uri-list-edit .uri-tag span')].map(s => s.textContent);
+      try { const data = await api('PATCH', `/api/apps/${appId}`, { redirectUris: uris }); const idx = state.apps.findIndex(a => a.appId === appId); if (idx >= 0) state.apps[idx] = data.app; state.currentApp = data.app; toast('Redirect URIs saved'); }
+      catch (e) { toast('Save failed: ' + e.message, 'err'); }
+    }
+    async function doSyncRetry(appId) {
+      try { const app = state.apps.find(a => a.appId === appId); if (app) await api('PATCH', `/api/apps/${appId}`, { name: app.name }); openAppDetail(appId); toast('Sync retried'); }
+      catch (e) { toast('Sync failed: ' + e.message, 'err'); }
+    }
+
+    // ═══ FAKE LOGS ═══
+    function generateFakeLogs() {
+      const tbody = document.getElementById('logs-tbody');
+      const methods = ['POST','GET','POST','POST','GET'];
+      const endpoints = ['/sdk/session/create','/sdk/config','/sdk/session/refresh','/sdk/session/logout','/sdk/session/list/:userId'];
+      const statuses = [201,200,200,200,200,401,500];
+      const apps = state.apps.map(a => a.name);
+      if (apps.length === 0) return;
+      tbody.innerHTML = '';
+      for (let i = 0; i < 8; i++) {
+        const m = methods[i % methods.length]; const ep = endpoints[i % endpoints.length];
+        const s = statuses[Math.floor(Math.random() * statuses.length)]; const lat = Math.floor(Math.random() * 40) + 5;
+        const app = apps[Math.floor(Math.random() * apps.length)];
+        const ts = new Date(Date.now() - i * 30000).toTimeString().slice(0, 8);
+        const sc = s < 400 ? 'status-200' : s < 500 ? 'status-401' : 'status-500';
+        tbody.innerHTML += `<tr>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${ts}</td>
+          <td><span class="method-tag ${m==='POST'?'method-post':'method-get'}">${m}</span></td>
+          <td style="font-family:var(--mono);font-size:11px">${ep}</td>
+          <td>${app}</td>
+          <td class="${sc}">${s}</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${lat}ms</td>
+        </tr>`;
+      }
+    }
+    function populateLogFilter() {
+      const sel = document.getElementById('log-app-filter');
+      sel.innerHTML = '<option value="">All apps</option>' + state.apps.map(a => `<option value="${a.appId}">${a.name}</option>`).join('');
+    }
+
+    // ═══ TOKEN TOOLS ═══
+    async function sdkFetch(method, path, body, sdkKey) {
+      const r = await fetch(API.sdk + path, { method, headers: { 'Content-Type': 'application/json', 'x-sdk-key': sdkKey }, body: body ? JSON.stringify(body) : undefined });
+      const data = await r.json().catch(() => ({})); return { ok: r.ok, status: r.status, data };
+    }
+    function showResult(elId, ok, data) { const el = document.getElementById(elId); el.className = 'verify-result show ' + (ok ? 'ok' : 'fail'); el.textContent = JSON.stringify(data, null, 2); }
+    async function doVerifyToken() { const key = document.getElementById('verify-sdk-key').value.trim(); const token = document.getElementById('verify-token').value.trim(); if (!key || !token) { toast('SDK key and token required','err'); return; } const { ok, data } = await sdkFetch('POST', '/sdk/token/verify', { token }, key); showResult('verify-result', ok, data); }
+    async function doCreateSession() { const key = document.getElementById('cs-sdk-key').value.trim(); const sub = document.getElementById('cs-sub').value.trim(); const email = document.getElementById('cs-email').value.trim(); const name = document.getElementById('cs-name').value.trim(); if (!key||!sub||!email||!name) { toast('All fields required','err'); return; } const { ok, data } = await sdkFetch('POST', '/sdk/session/create', { sub, email, name }, key); showResult('cs-result', ok, data); }
+    async function doRefreshSession() { const key = document.getElementById('ref-sdk-key').value.trim(); const token = document.getElementById('ref-token').value.trim(); if (!key||!token) { toast('SDK key and refresh token required','err'); return; } const { ok, data } = await sdkFetch('POST', '/sdk/session/refresh', { refreshToken: token }, key); showResult('ref-result', ok, data); }
+    async function doRevokeSingle() { const key = document.getElementById('rl-sdk-key').value.trim(); const token = document.getElementById('rl-token').value.trim(); if (!key||!token) { toast('SDK key and refresh token required','err'); return; } const { ok, data } = await sdkFetch('POST', '/sdk/session/logout', { refreshToken: token }, key); showResult('rl-result', ok, data); }
+    async function doRevokeAll() { const key = document.getElementById('rl-sdk-key').value.trim(); const userId = document.getElementById('rl-userid').value.trim(); if (!key||!userId) { toast('SDK key and userId required','err'); return; } if (!confirm(`Revoke ALL sessions for user ${userId}?`)) return; const { ok, data } = await sdkFetch('POST', '/sdk/session/logout-all', { userId }, key); showResult('rl-result', ok, data); }
+    async function doListSessions() {
+      const key = document.getElementById('ls-sdk-key').value.trim(); const userId = document.getElementById('ls-userid').value.trim();
+      if (!key||!userId) { toast('SDK key and userId required','err'); return; }
+      const { ok, data } = await sdkFetch('GET', `/sdk/session/list/${userId}`, null, key);
+      const res = document.getElementById('ls-result');
+      if (!ok) { showResult('ls-result', false, data); return; }
+      const sessions = data.sessions || [];
+      document.getElementById('ls-count').textContent = `${sessions.length} active session${sessions.length !== 1 ? 's' : ''}`;
+      document.getElementById('ls-tbody').innerHTML = sessions.length === 0
+        ? '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--ink3);font-family:var(--mono);font-size:12px">No active sessions</td></tr>'
+        : sessions.map(s => `<tr><td>${s.deviceName||'Unknown'}</td><td style="font-family:var(--mono);font-size:11px">${s.ip||'—'}</td><td style="font-family:var(--mono);font-size:11px">${s.lastUsedAt?new Date(s.lastUsedAt).toLocaleString():'—'}</td><td style="font-family:var(--mono);font-size:11px">${s.expiresAt?new Date(s.expiresAt).toLocaleDateString():'—'}</td></tr>`).join('');
+      res.style.display = 'block';
+    }
+
+    function fullTestServer() {
+      return `require('dotenv').config();\nconst express  = require('express');\nconst cookies  = require('cookie-parser');\nconst { AuthClient } = require('@oaauth/sdk');\n\nconst app  = express();\nconst auth = new AuthClient({\n  sdkKey:      process.env.SDK_KEY,\n  gatewayUrl:  process.env.SDK_GATEWAY_URL,\n  redirectUri: process.env.OIDC_REDIRECT_URI,\n});\n\napp.use(express.json());\napp.use(cookies());\n\napp.get('/login', auth.login);\napp.get('/callback', async (req, res) => {\n  try {\n    const result = await auth.handleCallbackAndCreateSession(req);\n    res.cookie('refreshToken', result.refreshToken, { httpOnly: true, sameSite: 'lax' });\n    res.json({ accessToken: result.accessToken, user: result.user });\n  } catch(e) { res.status(400).json({ error: e.message }); }\n});\napp.post('/refresh', auth.refreshRoute());\napp.post('/logout', auth.logoutRoute());\napp.get('/me', auth.protect(), (req,res) => res.json(req.user));\napp.listen(4001);`;
+    }
+
+    // ═══ INIT ═══
+    document.querySelectorAll('.tab-content:not(.active)').forEach(c => c.style.display = 'none');
+    document.querySelectorAll('[id^="s-"]:not(.active)').forEach(c => c.style.display = 'none');
+    if (state.token && state.developer) {
+      updateNavForAuth();
+      const dev = state.developer;
+      if (dev) { const sn = document.getElementById('settings-name'); const se = document.getElementById('settings-email'); if(sn) sn.value = dev.name||''; if(se) se.value = dev.email||''; }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#','');
+      if (hash === 'dashboard') { showPage('dashboard'); loadDashboard(); }
+      else if (hash === 'tokens') { showPage('tokens'); }
+      else if (hash === 'docs') { showPage('docs'); }
+      else { showPage('home'); }
+    });
+  </script>
+</body>
+</html>
