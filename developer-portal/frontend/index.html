@@ -560,8 +560,8 @@
 
   <script>
     const API = {
-      portal: "https://oidc-provider-production-4508.up.railway.app",
-      sdk: "https://auth-infrastructure-production.up.railway.app",
+      portal: "https://oaauth.onrender.com",
+      sdk: "https://auth-q03m.onrender.com",
       oidc: "https://oaauth-1.onrender.com",
     };
     let state = {
@@ -693,9 +693,9 @@
           <div class="step-body">
             <div class="step-title">Set environment variables <span class="step-tag">per app</span></div>
             <p class="step-desc">Grab your SDK key from the <a href="#" onclick="showPage('dashboard');loadDashboard()" style="color:var(--amber);text-decoration:none">dashboard</a>. Internal credentials are resolved server-side.</p>
-            <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">.env</span><button class="code-copy-btn" onclick="cp(this,'SDK_KEY=sdk_live_your_key_here\nSDK_GATEWAY_URL=https://auth-infrastructure-production.up.railway.app\nOIDC_REDIRECT_URI=http://localhost:4000/callback')">copy</button></div>
+            <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">.env</span><button class="code-copy-btn" onclick="cp(this,'SDK_KEY=sdk_live_your_key_here\nSDK_GATEWAY_URL=https://auth-q03m.onrender.com\nOIDC_REDIRECT_URI=http://localhost:4000/callback')">copy</button></div>
             <pre><code><span class="tk">SDK_KEY</span>=<span class="ts">sdk_live_your_key_here</span>
-<span class="tk">SDK_GATEWAY_URL</span>=<span class="ts">https://auth-infrastructure-production.up.railway.app</span>
+<span class="tk">SDK_GATEWAY_URL</span>=<span class="ts">https://auth-q03m.onrender.com</span>
 <span class="tk">OIDC_REDIRECT_URI</span>=<span class="ts">http://localhost:4000/callback</span></code></pre></div>
             <div class="info-box">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M7 6v4M7 4.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
@@ -968,7 +968,7 @@ app.<span class="tf">listen</span>(<span class="tn">4001</span>);</code></pre></
           <p class="docs-section-sub">All configuration is passed to the <code class="inline">AuthClient</code> constructor. Sensitive values should come from environment variables — never hardcode credentials.</p>
           <div class="code-wrap"><div class="code-head"><span class="code-lang-tag">.env</span></div>
           <pre><code><span class="tk">SDK_KEY</span>=<span class="ts">sdk_live_your_key_here</span>
-<span class="tk">SDK_GATEWAY_URL</span>=<span class="ts">https://auth-infrastructure-production.up.railway.app</span>
+<span class="tk">SDK_GATEWAY_URL</span>=<span class="ts">https://auth-q03m.onrender.com</span>
 <span class="tk">OIDC_REDIRECT_URI</span>=<span class="ts">http://localhost:4000/callback</span></code></pre></div>
           <table class="param-table">
             <thead><tr><th>Key</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
