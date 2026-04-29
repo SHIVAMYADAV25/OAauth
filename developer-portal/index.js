@@ -37,7 +37,13 @@ app.get('*', (req, res) => {
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 async function start() {
-  await mongoose.connect('mongodb://admin:password@localhost:27017/authbase-portal?authSource=admin');
+  const MONGO_URI = process.env.MONGODB_URI;
+
+  if (!MONGO_URI) {
+    throw new Error("MONGODB_URI is not defined");
+  }
+
+  await mongoose.connect(MONGO_URI);
   console.log('[DB] Connected');
   app.listen(PORT, () => console.log(`\n🌐 Developer Portal → http://localhost:${PORT}\n`));
 }
