@@ -1,68 +1,90 @@
 /**
- * OIDC Client Registry (DB-based)
+ * OIDC Client Registry (API-based)
  */
+
 const axios = require("axios");
-const SdkApp = require("../../../auth-microservice/src/models/SdkApp.js");
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Find client by clientId
-// ─────────────────────────────────────────────────────────────────────────────
+const AUTH_SERVICE_URL =
+  process.env.AUTH_SERVICE_URL || "http://localhost:3002";
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:3002';
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
-// const clients = [];
+// Axios instance (better control)
+const api = axios.create({
+  baseURL: AUTH_SERVICE_URL,
+  timeout: 5000, // ⏱️ prevents hanging requests
+});
 
+/**
+ * Find client by clientId
+ */
 async function findClient(clientId) {
+  if (!INTERNAL_API_KEY) {
+    console.error("[getClient] INTERNAL_API_KEY missing");
+    return null;
+  }
+
   try {
-    const res = await axios.get(`${AUTH_SERVICE_URL}/internal/sync/client/${clientId}`, {
+    const res = await api.get(`/internal/sync/client/${clientId}`, {
       headers: {
-        'x-internal-api-key': process.env.INTERNAL_API_KEY
-      }
+        "x-internal-api-key": INTERNAL_API_KEY,
+      },
     });
 
-    console.log(res.data);
+    // Only log minimal info (safe)
+    console.log("[getClient] fetched:", {
+      clientId: res.data?.clientId,
+      name: res.data?.name,
+    });
 
-    return res.data
+    return res.data;
   } catch (err) {
-    console.error('[getClient]', err.response?.data || err.message);
+    console.error(
+      "[getClient]",
+      err.response?.status,
+      err.response?.data || err.message
+    );
     return null;
   }
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Get client (used by authorize route)
-// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Get client (used by authorize route)
+ */
 async function getClient(clientId) {
   const client = await findClient(clientId);
-  console.log(client)
 
-  if (!client) return null;
+  if (!client) {
+    console.warn("[getClient] client not found:", clientId);
+    return null;
+  }
 
   return client;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Validate redirect URI
-// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Validate redirect URI
+ */
 function validateRedirectUri(client, redirectUri) {
   if (!client) return false;
-  console.log('--- VALIDATING REDIRECT URI ---');
-  console.log('Incoming:', redirectUri);
-  console.log('Stored:', client);
+
+  console.log("[validateRedirectUri]", {
+    incoming: redirectUri,
+    allowed: client.redirectUris,
+  });
 
   return (client.redirectUris || []).includes(redirectUri);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Validate client secret (if needed)
-// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Validate client secret (if needed)
+ */
 function validateClientSecret(client, secret) {
-  return client.clientSecret === secret;
+  return client?.clientSecret === secret;
 }
 
 module.exports = {
   getClient,
   validateRedirectUri,
-  validateClientSecret
+  validateClientSecret,
 };
